@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
+
 # Modified for SQLite with parameters for better SQLite handling
 engine = create_engine(
     settings.DATABASE_URL,
