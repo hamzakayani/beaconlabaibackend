@@ -1,19 +1,19 @@
-from passlib.context import CryptContext
-from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
-from typing import Optional
 from datetime import datetime, timedelta, timezone
-from app.core.config import settings
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.user import User
+from app.core.config import settings
 from app.models.role import UserRole
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/backend/api/v1/user/login",
+    tokenUrl="/backend/api/v1/auth/login",
     auto_error=False
 )
 
@@ -43,6 +43,9 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
+    if token is None:
+        raise credentials_exception
+    
     try:
         payload = jwt.decode(
             token, 
@@ -53,7 +56,7 @@ async def get_current_user(
         if email is None:
             raise credentials_exception
         
-    except:
+    except JWTError:
         raise credentials_exception
  
     user = db.query(User).filter(User.primary_email == email).first()

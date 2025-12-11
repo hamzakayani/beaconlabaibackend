@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.logging_config import setup_logging
 logger = setup_logging()
 
-from app.api.v1.endpoints import user
+from app.api.v1.endpoints import auth
 
 app = FastAPI(
     title="Beacon Lab AI Backend",
@@ -40,7 +40,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 #  Include API Routes
 
-app.include_router(user.router, prefix="/api/v1/user", tags=["User"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 
 
 
