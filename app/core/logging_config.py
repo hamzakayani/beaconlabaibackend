@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 
@@ -9,8 +10,12 @@ def setup_logging():
     
     logger.setLevel(logging.INFO)  # Set the default log level
     
+    # Create logs directory if it doesn't exist
+    log_dir = 'app/logs'
+    os.makedirs(log_dir, exist_ok=True)
+    
     # Create a timed rotating file handler
-    log_filename = f'app/logs/app_logs_{datetime.now().strftime("%Y%m%d")}.log'
+    log_filename = f'{log_dir}/app_logs_{datetime.now().strftime("%Y%m%d")}.log'
     handler = TimedRotatingFileHandler(
         log_filename,
         when='midnight',  # Rotate at midnight

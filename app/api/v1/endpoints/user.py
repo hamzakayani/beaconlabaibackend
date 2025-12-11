@@ -32,19 +32,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             detail="Your email address has not been verified yet. Please check your inbox for the verification email and follow the instructions to complete the process. If you haven't received the email, you may request a new verification link."
         )
     
-    # Note: These fields (is_verified, verified_status) may not exist in your User model yet
-    # Uncomment when you add them to the model
-    # if not user.is_verified:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Your account is currently pending review and requires administrative approval before you can proceed. Please wait for the administrator to review your details and grant access. You will be notified once your account is approved."
-    #     )
-    # 
-    # if not user.verified_status:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Admin didn't Aprove your request"
-    #     )
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your account is currently pending review and requires administrative approval before you can proceed. Please wait for the administrator to review your details and grant access. You will be notified once your account is approved."
+        )
+    
+    if not user.verified_status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin didn't Aprove your request"
+        )
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
