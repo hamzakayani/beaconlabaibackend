@@ -3,7 +3,7 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     DATABASE_URL: str #= "sqlite:///./sql_app.db"
-    SECRET_KEY: str
+    #SECRET_KEY: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
