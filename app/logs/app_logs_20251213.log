@@ -1,0 +1,72 @@
+2025-12-13 23:48:48,131 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'image_url': 'string', 'hyperlink': 'tyuj', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128332, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128341, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:48:48,131 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'image_url': 'string', 'hyperlink': 'tyuj', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128332, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128341, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:48:48,131 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'image_url': 'string', 'hyperlink': 'tyuj', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128332, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128341, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:48:48,131 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'image_url': 'string', 'hyperlink': 'tyuj', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128332, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 48, 48, 128341, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:50:23,531 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'missing', 'loc': ('body', 'image_url'), 'msg': 'Field required', 'input': {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'hyperlink': 'tyuj'}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in create_team_member
+    POST /backend/api/v1/team
+2025-12-13 23:50:23,531 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'missing', 'loc': ('body', 'image_url'), 'msg': 'Field required', 'input': {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'hyperlink': 'tyuj'}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in create_team_member
+    POST /backend/api/v1/team
+2025-12-13 23:50:23,531 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'missing', 'loc': ('body', 'image_url'), 'msg': 'Field required', 'input': {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'hyperlink': 'tyuj'}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in create_team_member
+    POST /backend/api/v1/team
+2025-12-13 23:50:23,531 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'missing', 'loc': ('body', 'image_url'), 'msg': 'Field required', 'input': {'name': 'habza', 'category': 'lab members', 'role': 'rtyj', 'designation': 'gujmjk', 'description': 'gyhji', 'hyperlink': 'tyuj'}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in create_team_member
+    POST /backend/api/v1/team
+2025-12-13 23:51:50,417 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'UUED', 'category': 'lab director', 'role': 'HUWD', 'designation': 'JHISD', 'description': 'TYWUH', 'image_url': 'string', 'hyperlink': 'string', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415374, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415381, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:51:50,417 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'UUED', 'category': 'lab director', 'role': 'HUWD', 'designation': 'JHISD', 'description': 'TYWUH', 'image_url': 'string', 'hyperlink': 'string', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415374, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415381, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:51:50,417 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'UUED', 'category': 'lab director', 'role': 'HUWD', 'designation': 'JHISD', 'description': 'TYWUH', 'image_url': 'string', 'hyperlink': 'string', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415374, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415381, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:51:50,417 - fastapi - ERROR - Error creating team member: (pymysql.err.ProgrammingError) (1146, "Table 'beacon_lab.team_members' doesn't exist")
+[SQL: INSERT INTO team_members (name, category, `role`, designation, description, image_url, hyperlink, is_deleted, created_at, updated_at) VALUES (%(name)s, %(category)s, %(role)s, %(designation)s, %(description)s, %(image_url)s, %(hyperlink)s, %(is_deleted)s, %(created_at)s, %(updated_at)s)]
+[parameters: {'name': 'UUED', 'category': 'lab director', 'role': 'HUWD', 'designation': 'JHISD', 'description': 'TYWUH', 'image_url': 'string', 'hyperlink': 'string', 'is_deleted': 0, 'created_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415374, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2025, 12, 13, 18, 51, 50, 415381, tzinfo=datetime.timezone.utc)}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-12-13 23:59:21,416 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'enum', 'loc': ('body', 'category'), 'msg': "Input should be 'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'", 'input': 'labhuiii', 'ctx': {'expected': "'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'"}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in add_team_member
+    POST /backend/api/v1/teamadd_team_member
+2025-12-13 23:59:21,416 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'enum', 'loc': ('body', 'category'), 'msg': "Input should be 'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'", 'input': 'labhuiii', 'ctx': {'expected': "'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'"}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in add_team_member
+    POST /backend/api/v1/teamadd_team_member
+2025-12-13 23:59:21,416 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'enum', 'loc': ('body', 'category'), 'msg': "Input should be 'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'", 'input': 'labhuiii', 'ctx': {'expected': "'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'"}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in add_team_member
+    POST /backend/api/v1/teamadd_team_member
+2025-12-13 23:59:21,416 - fastapi - ERROR - Request validation error: 1 validation error:
+  {'type': 'enum', 'loc': ('body', 'category'), 'msg': "Input should be 'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'", 'input': 'labhuiii', 'ctx': {'expected': "'lab director', 'collaborations', 'lab members', 'lab alumni', 'clinical resident and fellows' or 'graduate and undergraduate students'"}}
+
+  File "/home/funavry/BeaconLab/app/api/v1/endpoints/team.py", line 29, in add_team_member
+    POST /backend/api/v1/teamadd_team_member

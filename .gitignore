@@ -3,3 +3,4 @@ alembic/versions/
 *.ipynb
 .env
 *.db
+images/
