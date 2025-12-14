@@ -2,13 +2,13 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.logging_config import setup_logging
 logger = setup_logging()
 
-from app.api.v1.endpoints import auth
+from app.api.v1.endpoints import auth, contact, team
 
 app = FastAPI(
     title="Beacon Lab AI Backend",
@@ -38,9 +38,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": exc.errors(), "body": exc.body},
     )
 
+os.makedirs("images", exist_ok=True)
+app.mount("/images", StaticFiles(directory="images"), name="images")
+
 #  Include API Routes
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+app.include_router(contact.router, prefix="/api/v1/contact", tags=["Contact"])
+app.include_router(team.router, prefix="/api/v1/team", tags=["Team"])
 
 
 
