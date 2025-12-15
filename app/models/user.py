@@ -15,6 +15,6 @@ class User(Base):
     primary_email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(250), nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)

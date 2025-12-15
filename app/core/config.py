@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     IMAGES_UPLOAD_DIR: Path = Path("images")
     IMAGE_MAX_FILE_SIZE:int = 5 * 1024 * 1024  # 5 MB
     ALLOWED_IMAGE_EXTENSIONS:set = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    
+    # CV Upload Settings
+    CV_UPLOAD_DIR: Path = Path("cv_uploads")
+    CV_MAX_FILE_SIZE: int = 5 * 1024 * 1024  # 5 MB
+    ALLOWED_CV_EXTENSIONS: set = {".pdf", ".doc", ".docx"}
 
 
     model_config = SettingsConfigDict(env_file=".env")

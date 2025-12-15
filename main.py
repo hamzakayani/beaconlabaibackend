@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.logging_config import setup_logging
 logger = setup_logging()
 
-from app.api.v1.endpoints import auth, contact, team
+from app.api.v1.endpoints import auth, contact, team, jobs
 
 app = FastAPI(
     title="Beacon Lab AI Backend",
@@ -38,7 +38,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": exc.errors(), "body": exc.body},
     )
 
+from app.core.config import settings
+
 os.makedirs("images", exist_ok=True)
+os.makedirs(settings.CV_UPLOAD_DIR, exist_ok=True)
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
 #  Include API Routes
@@ -46,6 +49,7 @@ app.mount("/images", StaticFiles(directory="images"), name="images")
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(contact.router, prefix="/api/v1/contact", tags=["Contact"])
 app.include_router(team.router, prefix="/api/v1/team", tags=["Team"])
+app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["Jobs"])
 
 
 
