@@ -10,6 +10,8 @@ from app.db.database import Base
 from app.models.user import User
 from app.models.contact import ContactInquiry
 from app.models.team import TeamMember
+from app.models.jobs import Job
+from app.models.job_applicants import JobApplicant
 
 
 
