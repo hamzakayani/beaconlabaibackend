@@ -4,3 +4,4 @@ alembic/versions/
 .env
 *.db
 images/
+cv_uploads/

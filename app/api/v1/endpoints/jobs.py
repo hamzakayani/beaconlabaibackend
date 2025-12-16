@@ -23,6 +23,28 @@ from app.services.file_upload import save_cv_file
 
 router = APIRouter()
 
+@router.post("/create_job")
+async def create_job(
+    job_data: JobCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """
+    Create a new job posting (admin only).
+    """
+    job = Job(
+        title=job_data.title,
+        job_type=job_data.job_type,
+        location=job_data.location,
+        description=job_data.description,
+        status=job_data.status
+    )
+    
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    
+    return {"message": "Job created successfully"}
 
 @router.get("", response_model=PaginatedResponse[JobResponse])
 async def list_jobs(
@@ -89,31 +111,10 @@ async def get_job(
     return job
 
 
-@router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(
-    job_data: JobCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Create a new job posting (admin only).
-    """
-    job = Job(
-        title=job_data.title,
-        job_type=job_data.job_type,
-        location=job_data.location,
-        description=job_data.description,
-        status=job_data.status
-    )
-    
-    db.add(job)
-    db.commit()
-    db.refresh(job)
-    
-    return job
 
 
-@router.put("/{job_id}", response_model=JobResponse)
+
+@router.put("/{job_id}")
 async def update_job(
     job_id: int,
     job_data: JobUpdate,
@@ -136,24 +137,25 @@ async def update_job(
             detail="Job not found"
         )
     
-    # Update only provided fields
-    if job.title is not None:
+    if job_data.title is not None:
         job.title = job_data.title
-    if job.job_type is not None:
+    if job_data.job_type is not None:
         job.job_type = job_data.job_type
-    if job.location is not None:
+    if job_data.location is not None:
         job.location = job_data.location
-    if job.description is not None:
+    if job_data.description is not None:
         job.description = job_data.description
-    if job.status is not None:
+    if job_data.status is not None:
         job.status = job_data.status
-    db.refresh(job)
+    
+    
     job.updated_at = datetime.now(timezone.utc)
     db.commit()
+    db.refresh(job)
+    
+    return {"message": "Job updated successfully"}
 
-    return job
-
-@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{job_id}")
 async def delete_job(
     job_id: int,
     db: Session = Depends(get_db),
@@ -179,7 +181,7 @@ async def delete_job(
     job.updated_at = datetime.now(timezone.utc)
     db.commit()
     
-    return None
+    return {"message": "Job deleted successfully"}
 
 
 @router.post("/{job_id}/apply", response_model=JobApplicationResponse, status_code=status.HTTP_201_CREATED)
