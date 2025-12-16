@@ -12,13 +12,13 @@ from app.api.v1.endpoints import auth, contact, team, jobs
 
 app = FastAPI(
     title="Beacon Lab AI Backend",
-    root_path="/backend",
+    root_path="/beaconlabai",
     docs_url="/docs",
     openapi_url="/openapi.json",
     swagger_ui_parameters={
         "operationsSorter": "alpha",
         "persistAuthorization": True,
-        "url": "/backend/openapi.json"
+        "url": "/beaconlabai/openapi.json"
     }
 )
 
