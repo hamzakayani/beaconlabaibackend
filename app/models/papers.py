@@ -1,30 +1,22 @@
-import uuid
-from sqlalchemy import ARRAY, JSON, Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Enum, Index
+
+from sqlalchemy import ARRAY, JSON, Column, Integer, String, DateTime, Boolean, Text,Index
 from app.db.database import Base
 from datetime import datetime, timezone
-from app.schemas.screening_enum import UploadSourceEnum, DecisionEnum, PaperIdTypeEnum, UploadTypeEnum, ScreeningDecision
 
 def utc_now():
     return datetime.now(timezone.utc)
 
-class UploadTypeEnum(str, Enum):
-    CSV = "csv"
-    XML = "xml"
-    PUBMED = "pubmed"
-    DOI = "doi"
-    MANUAL = "manual"
-    NO = "none"
-
-class Papers(Base):
+class Paper(Base):
     __tablename__ = "papers"
 
     id = Column(Integer, primary_key=True, index=True)
+
     title = Column(Text, nullable=False, default="")
     abstract = Column(Text, nullable=True, default="")
     authers = Column(Text, default="")
     journal = Column(Text,default="")
+    paper_id = Column(String(100), default="", index=True)
     publish_date = Column(String(250), default="", index=True)
-    upload_type = Column(Enum(UploadTypeEnum), default=UploadTypeEnum.NO)
     pubmed_id = Column(String(100), default="", index=True)
     nct_number = Column(String(50), default="",index=True)
     tags = Column(JSON, default = lambda: {"tag": []})
@@ -39,3 +31,10 @@ class Papers(Base):
         Index('ix_papers_abstract', 'abstract', mysql_length=191),
         Index('ix_papers_authers', 'authers', mysql_length=191),
     )
+
+    @classmethod
+    def search_by_tags(cls, search_tags):
+        #search_tags = [tag.lower() for tag in search_tags]
+        return cls.query.filter(
+            cls.tags['tag'].astext.cast(ARRAY(String)).contains(search_tags)
+        )

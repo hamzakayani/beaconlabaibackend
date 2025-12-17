@@ -12,6 +12,7 @@ from app.models.contact import ContactInquiry
 from app.models.team import TeamMember
 from app.models.jobs import Job
 from app.models.job_applicants import JobApplicant
+from app.models.papers import Paper
 
 
 

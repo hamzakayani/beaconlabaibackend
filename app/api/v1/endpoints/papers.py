@@ -1,24 +1,20 @@
-from typing import Optional
-from app.schemas.papers import DOIPaperCreate
-from fastapi import APIRouter, Depends, Form, HTTPException, status, BackgroundTasks, File, UploadFile
+
+from math import ceil
+from app.models.papers import Paper
+from app.schemas.pagination import PageInfo, PaginatedResponse
+from app.schemas.papers import DOIPaperCreate, PaperResponse, PubmedPaperCreate
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import flag_modified
 from app.db.database import get_db
-from app.core.config import settings
 from app.services.auth import get_current_active_user
 from app.models.user import User
-import pandas as pd
-import os
-from datetime import datetime
-from pathlib import Path
 
-from app.services.papers import doi_fetch
+from app.services.papers import doi_fetch, e_fetch
 
 router = APIRouter()
 
 @router.post("/add/doi/{project_id}")
 async def add_paper_by_doi(
-    project_id: int,
     paper: DOIPaperCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -46,48 +42,16 @@ async def add_paper_by_doi(
         # Create new paper entry
         db_paper = Paper(
             paper_id=paper.doi,
-            paper_id_type=PaperIdTypeEnum.DOI,
-            upload_type=UploadTypeEnum.DOI,
             nct_number = paper.nct_number,
-            upload_decision=paper.decision,
-            upload_source=UploadSourceEnum.MANUAL,
             title = res[0]['title'],
             abstract = res[0]['abstract'],
             publish_date = publish_date2,
             authers = comma_separated_authors,
-            journal = res[0]['journal'],
-            project_id = project_id
+            journal = res[0]['journal']
         )
 
         db.add(db_paper)
         db.commit()
-
-        is_duplicate = check_duplicate_for_new_paper(db_paper, db)
-
-        if not is_duplicate:
-            if paper.decision == DecisionEnum.IncludeInSR or paper.decision == DecisionEnum.IncludeInSRAndMA:
-                db_paper.decision = ScreeningDecision.IncludeByFullText
-                default_clinical_question = db.query(ClinicalQuestion).filter(
-                    ClinicalQuestion.project_id == project_id,
-                    ClinicalQuestion.is_default == True,
-                    ClinicalQuestion.is_deleted == False
-                ).first()
-                if default_clinical_question:
-                    db_paper_cq = PaperCQ(
-                        paper_id = db_paper.id,
-                        cq_id = default_clinical_question.id,
-                        decision = CQDecision.Include
-                    )
-                    db.add(db_paper_cq)
-                    db.commit()
-                    db.refresh(db_paper_cq)
-            elif paper.decision == DecisionEnum.ExcludedByFullText:
-                db_paper.decision = ScreeningDecision.ExcludedByFullText
-            else:
-                db_paper.decision = paper.decision
-
-            db.commit()
-            db.refresh(db_paper)
 
         return {"message": "The paper has been successfully added to the system."}
 
@@ -96,4 +60,93 @@ async def add_paper_by_doi(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e.detail)
+        )
+
+@router.post("/add/pubmed/{project_id}")
+async def add_paper_by_pubmed_id(
+    paper: PubmedPaperCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+
+    
+    try:
+        result = e_fetch([paper.pm_id])
+        if result == None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No information found for given PubMED ID."
+            )
+        publish_date2 = result['result'][result['result']['uids'][0]]['date_pub']
+        authers2 = ", ".join(author['name'] for author in result['result'][result['result']['uids'][0]]['authors'])
+        # Create new paper entry
+        db_paper = Paper(
+            paper_id=paper.pm_id,
+            nct_number = paper.nct_number,
+            title = result['result'][result['result']['uids'][0]]['title'],
+            abstract = result['result'][result['result']['uids'][0]]['abstract'],
+            publish_date = publish_date2,
+            authers = authers2
+        )
+
+        db.add(db_paper)
+        db.commit()
+
+        return {"message": "The paper has been successfully added to the system."}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+@router.get("/list_all_papers", response_model=PaginatedResponse[PaperResponse])
+async def list_all_papers(
+    page: int = Query(1, description="Page number"),
+    size: int = Query(10, description="Max number of items to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get all papers with pagination
+    """
+    try:
+        # Build query with soft delete filter
+        query = db.query(Paper).filter(Paper.is_deleted == False)
+        
+        # Order by created_at descending
+        query = query.order_by(Paper.created_at.desc())
+        
+        # Get total count
+        total_items = query.count()
+        
+        # Calculate total pages
+        total_pages = ceil(total_items / size)
+        
+        # Apply pagination
+        papers = query.offset((page - 1) * size).limit(size).all()
+        
+        # Convert to response models
+        items = [PaperResponse.model_validate(paper) for paper in papers]
+        
+        # Create page info
+        page_info = PageInfo(
+            total=total_items,
+            page=page,
+            size=size,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_previous=page > 1
+        )
+        
+        return PaginatedResponse[PaperResponse](
+            items=items,
+            page_info=page_info
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch papers: {str(e)}"
         )
