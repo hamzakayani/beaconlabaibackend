@@ -13,7 +13,7 @@ from fastapi.security import OAuth2PasswordBearer
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/backend/api/v1/auth/login",
+    tokenUrl="/beaconlabai/api/v1/auth/login",
     auto_error=False
 )
 
