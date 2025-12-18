@@ -119,14 +119,21 @@ async def list_team_members(
     """
     query = db.query(TeamMember).filter(
         TeamMember.is_deleted == False
-        ).order_by(TeamMember.created_at.desc()).all()
+        )
     
     if search:
         query = query.filter(
             TeamMember.name.ilike(f"%{search}%")
         )
+    
+    # Order by created_at descending
+    query = query.order_by(TeamMember.created_at.desc())
+    
+    # Get total count before pagination
     total_items = query.count()
     total_pages = ceil(total_items / size)
+    
+    # Apply pagination
     items = query.offset((page - 1) * size).limit(size).all()
 
     page_info = PageInfo(

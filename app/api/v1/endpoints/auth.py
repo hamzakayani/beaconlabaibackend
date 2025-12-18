@@ -41,10 +41,10 @@ async def login(
     )
     
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
         "role": user.role,
         "user_id": user.id,
-        "name": f"{user.first_name} {user.last_name}"
+        "name": f"{user.first_name} {user.last_name}",
+        "access_token": access_token,
+        "token_type": "bearer"
     }
 
