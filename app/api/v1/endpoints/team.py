@@ -3,7 +3,7 @@ from typing import Optional
 from math import ceil
 from pathlib import Path
 import os
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.db.database import get_db
@@ -12,7 +12,7 @@ from app.schemas.team import (
     TeamMemberCreate,
     TeamMemberUpdate,
     TeamMemberResponse,
-
+    TeamCategory,
 )
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
@@ -21,33 +21,114 @@ from app.core.config import settings
 router = APIRouter()
 
 
-
 @router.post("/add_team_member")
 async def add_team_member(
-    team_member_data: TeamMemberCreate,
+    name: str = Form(..., min_length=1, max_length=50),
+    category: str = Form(...),
+    role: str = Form(..., min_length=1, max_length=50),
+    designation: str = Form(..., min_length=1, max_length=50),
+    description: str = Form(..., min_length=1),
+    hyperlink: Optional[str] = Form(None, max_length=255),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
-
 ):
     """
-    Add a new team member
+    Add a new team member with optional image upload
     """
-    team_member = TeamMember(
-        name=team_member_data.name,
-        category=team_member_data.category.value,
-        role=team_member_data.role,
-        designation=team_member_data.designation,
-        description=team_member_data.description,
-        image_url=team_member_data.image_url,
-        hyperlink=team_member_data.hyperlink
-    )   
-
-    db.add(team_member)
-    db.commit()
-    db.refresh(team_member)
+    # Validate category
+    try:
+        team_category = TeamCategory(category)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {[c.value for c in TeamCategory]}"
+        )
+    
+    image_url = ""
+    file_path = None
+    
+    # Handle image upload if provided
+    if file and file.filename:
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only images are allowed"
+            )
+        
+        # Create team member first to get the ID for filename
+        team_member = TeamMember(
+            name=name,
+            category=team_category.value,
+            role=role,
+            designation=designation,
+            description=description,
+            image_url="",  # Will be updated after file upload
+            hyperlink=hyperlink or ""
+        )
+        
+        db.add(team_member)
+        db.commit()
+        db.refresh(team_member)
+        
+        # Now create filename with team_member_id
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"team_member_{team_member.id}_{timestamp}{file_ext}"
+        file_path = settings.IMAGES_UPLOAD_DIR / filename
+        
+        try:
+            contents = await file.read()
+            
+            if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
+                db.delete(team_member)
+                db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="File is too large to upload."
+                )
+            
+            with open(file_path, "wb") as f:
+                f.write(contents)
+            
+            # Update team member with image_url
+            image_url = str(file_path)
+            team_member.image_url = image_url
+            team_member.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(team_member)
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Clean up: delete team member if file upload fails
+            if team_member:
+                db.delete(team_member)
+                db.commit()
+            if file_path and file_path.exists():
+                file_path.unlink()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error uploading image: {str(e)}"
+            )
+    else:
+        # No image provided, create team member without image
+        team_member = TeamMember(
+            name=name,
+            category=team_category.value,
+            role=role,
+            designation=designation,
+            description=description,
+            image_url="",
+            hyperlink=hyperlink or ""
+        )
+        
+        db.add(team_member)
+        db.commit()
+        db.refresh(team_member)
 
     return {
-        "message": "Team member added successfully"
+        "message": "Team member added successfully",
     }
 
 @router.put("/{team_member_id}/update")
@@ -170,131 +251,4 @@ async def delete_team_member(
     return {
         "message": "Team member deleted successfully"
     }
-
-
-@router.post("/{team_member_id}/upload_image")
-async def upload_image(
-    team_member_id: int,
-    file: UploadFile = File(...),
-    old_image_path: str | None = None,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Upload an image for a team member (Admin only)
-    """
-    team_member = db.query(TeamMember).filter(
-        and_(
-            TeamMember.id == team_member_id,
-            TeamMember.is_deleted == False
-        )
-    ).first()
-    
-    if not team_member:
-        raise HTTPException(status_code=404, detail="Team member not found")
-    
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only images are allowed"
-        )
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"team_member_{team_member_id}_{timestamp}{file_ext}"
-    file_path = settings.IMAGES_UPLOAD_DIR / filename
-    
-    try:
-        contents = await file.read()
-        
-        if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File is too large to upload."
-            )
-        
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        
-        # Delete old image if provided
-        if old_image_path:
-            old_file = Path(old_image_path)
-            if old_file.exists():
-                try:
-                    old_file.unlink()
-                except Exception:
-                    pass
-        
-        # Update team member image_url
-        team_member.image_url = str(file_path)
-        team_member.updated_at = datetime.now(timezone.utc)
-        db.add(team_member)
-        db.commit()
-        db.refresh(team_member)
-        
-        return {
-            "message": "Image uploaded successfully",
-            "image_url": str(file_path)
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        if file_path.exists():
-            file_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-@router.delete("/{team_member_id}/delete_image")
-async def delete_image(
-    team_member_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Delete an image from a team member (Admin only)
-    """
-    team_member = db.query(TeamMember).filter(
-        and_(
-            TeamMember.id == team_member_id,
-            TeamMember.is_deleted == False
-        )
-    ).first()
-    
-    if not team_member:
-        raise HTTPException(status_code=404, detail="Team member not found")
-    
-    if not team_member.image_url:
-        raise HTTPException(
-            status_code=404,
-            detail="No image found for this team member"
-        )
-    
-    try:
-        image_path = team_member.image_url
-        file_to_delete = Path(image_path)
-        
-        if file_to_delete.exists():
-            try:
-                file_to_delete.unlink()
-            except Exception as e:
-                print(f"Warning: unable to delete file {image_path}: {e}")
-        
-        # Clear image_url in database
-        team_member.image_url = ""
-        team_member.updated_at = datetime.now(timezone.utc)
-        db.add(team_member)
-        db.commit()
-        db.refresh(team_member)
-        
-        return {"message": "Image deleted successfully"}
-    
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
 
