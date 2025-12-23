@@ -51,7 +51,8 @@ async def add_feature_publication_manual(
         db.refresh(feature_publication)
 
         return {
-            "message": "Feature publication added successfully"
+            "message": "Feature publication added successfully",
+            "publication_id": feature_publication.id
         }
 
     except Exception as e:
@@ -110,6 +111,7 @@ async def add_feature_publication_by_doi(
 
         return {
             "message": "Feature publication has been successfully added to the system.",
+            "publication_id": db_publication.id
         }
 
     except HTTPException:
@@ -160,6 +162,7 @@ async def add_feature_publication_by_pubmed_id(
 
         return {
             "message": "Feature publication has been successfully added to the system.",
+            "publication_id": db_publication.id
         }
 
     except HTTPException:
