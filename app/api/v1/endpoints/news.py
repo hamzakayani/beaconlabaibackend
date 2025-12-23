@@ -18,20 +18,68 @@ router = APIRouter()
 
 @router.post("/create_news")
 async def create_news(
-    news_data: NewsCreate,
+    title: str = Form(...),
+    content: str = Form(...),
+    hyperlink: str | None = Form(None),
+    publish_date: datetime = Form(...),
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):
+    # Create news first
     news = News(
-        title=news_data.title,
-        content=news_data.content,
-        hyperlink=news_data.hyperlink,
-        publish_date=news_data.publish_date,
+        title=title,
+        content=content,
+        hyperlink=hyperlink,
+        publish_date=publish_date,
     )
     db.add(news)
     db.commit()
     db.refresh(news)
-    return {"message": "News created successfully"}
+    
+    # Upload image
+    news_id = news.id
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only images are allowed"
+        )
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"news_{news_id}_{timestamp}{file_ext}"
+    file_path = settings.IMAGES_UPLOAD_DIR / filename
+    
+    try:
+        contents = await file.read()
+        
+        if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File is too large to upload."
+            )
+        
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        
+        # Update news image_url
+        news.image_url = str(file_path)
+        news.updated_at = datetime.now(timezone.utc)
+        db.add(news)
+        db.commit()
+        db.refresh(news)
+        
+        return {"message": "News created successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 @router.put("/update_news/{news_id}")
 async def update_news(
@@ -127,127 +175,3 @@ async def get_all_news(
         page_info=page_info
         )
 
-@router.post("/{news_id}/upload_image")
-async def upload_image(
-    news_id: int,
-    file: UploadFile = File(...),
-    old_image_path: str | None = None,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Upload an image for a news item (Admin only)
-    """
-    news = db.query(News).filter(
-        and_(
-            News.id == news_id,
-            News.is_deleted == False
-        )
-    ).first()
-    
-    if not news:
-        raise HTTPException(status_code=404, detail="News not found")
-    
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only images are allowed"
-        )
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"news_{news_id}_{timestamp}{file_ext}"
-    file_path = settings.IMAGES_UPLOAD_DIR / filename
-    
-    try:
-        contents = await file.read()
-        
-        if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File is too large to upload."
-            )
-        
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        
-        # Delete old image if provided
-        if old_image_path:
-            old_file = Path(old_image_path)
-            if old_file.exists():
-                try:
-                    old_file.unlink()
-                except Exception:
-                    pass
-        
-        # Update news image_url
-        news.image_url = str(file_path)
-        news.updated_at = datetime.now(timezone.utc)
-        db.add(news)
-        db.commit()
-        db.refresh(news)
-        
-        return {
-            "message": "Image uploaded successfully",
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        if file_path.exists():
-            file_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-@router.delete("/{news_id}/delete_image")
-async def delete_image(
-    news_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Delete an image from a news item (Admin only)
-    """
-    news = db.query(News).filter(
-        and_(
-            News.id == news_id,
-            News.is_deleted == False
-        )
-    ).first()
-    
-    if not news:
-        raise HTTPException(status_code=404, detail="News not found")
-    
-    if not news.image_url:
-        raise HTTPException(
-            status_code=404,
-            detail="No image found for this news item"
-        )
-    
-    try:
-        image_path = news.image_url
-        file_to_delete = Path(image_path)
-        
-        if file_to_delete.exists():
-            try:
-                file_to_delete.unlink()
-            except Exception as e:
-                print(f"Warning: unable to delete file {image_path}: {e}")
-        
-        # Clear image_url in database
-        news.image_url = ""
-        news.updated_at = datetime.now(timezone.utc)
-        db.add(news)
-        db.commit()
-        db.refresh(news)
-        
-        return {"message": "Image deleted successfully"}
-    
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
