@@ -74,7 +74,7 @@ async def create_news(
                 f.write(contents)
             
             # Update news with image_url
-            image_url = str(file_path)
+            image_url = f"/images/{filename}"
             news.image_url = image_url
             news.updated_at = datetime.now(timezone.utc)
             db.commit()
@@ -168,7 +168,7 @@ async def update_news(
                 f.write(contents)
             
             # Update news with new image_url
-            news.image_url = str(file_path)
+            news.image_url = f"/images/{filename}"
             
             # Delete old image if it exists
             if old_image_path and old_image_path.exists():

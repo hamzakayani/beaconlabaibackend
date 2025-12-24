@@ -41,9 +41,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 from app.core.config import settings
 
 os.makedirs("images", exist_ok=True)
-os.makedirs(settings.CV_UPLOAD_DIR, exist_ok=True)
 app.mount("/images", StaticFiles(directory="images"), name="images")
-app.mount("/cv_uploads", StaticFiles(directory=str(settings.CV_UPLOAD_DIR)), name="cv_uploads")
+
+os.makedirs("cv_uploads", exist_ok=True)
+app.mount("/cv_uploads", StaticFiles(directory="cv_uploads"), name="cv_uploads")
 
 
 #  Include API Routes

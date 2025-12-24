@@ -92,7 +92,7 @@ async def add_team_member(
                 f.write(contents)
             
             # Update team member with image_url
-            image_url = str(file_path)
+            image_url = f"/images/{filename}"
             team_member.image_url = image_url
             team_member.updated_at = datetime.now(timezone.utc)
             db.commit()
@@ -203,7 +203,7 @@ async def update_team_member(
                 f.write(contents)
             
             # Update team member with new image_url
-            team_member.image_url = str(file_path)
+            team_member.image_url = f"/images/{filename}"
             
             # Delete old image if it exists
             if old_image_path and old_image_path.exists():
