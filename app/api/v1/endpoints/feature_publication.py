@@ -390,7 +390,7 @@ async def upload_image(
                     pass
         
         # Update feature publication image_url
-        publication.image_url = str(file_path)
+        publication.image_url = f"/images/{filename}"
         publication.updated_at = datetime.now(timezone.utc)
         db.add(publication)
         db.commit()
