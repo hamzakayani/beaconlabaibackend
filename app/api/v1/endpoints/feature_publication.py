@@ -42,8 +42,7 @@ async def add_feature_publication_manual(
             publish_date=publication_data.publish_date,
             pubmed_id=publication_data.pubmed_id,
             nct_number=publication_data.nct_number,
-            doi=publication_data.doi,
-            image_url=publication_data.image_url
+            doi=publication_data.doi
         )
 
         db.add(feature_publication)
