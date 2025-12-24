@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
+import os
 from typing import Optional
 from math import ceil
+import uuid
+from app.core.config import settings
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -184,7 +187,7 @@ async def delete_job(
     return {"message": "Job deleted successfully"}
 
 
-@router.post("/{job_id}/apply", response_model=JobApplicationResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{job_id}/apply")
 async def apply_to_job(
     job_id: int,
     full_name: str = Form(..., min_length=1, max_length=255),
@@ -196,9 +199,8 @@ async def apply_to_job(
 ):
     """
     Apply to a job with CV upload (public endpoint).
-    Accepts multipart/form-data with CV file and application details.
     """
-    # Validate email format
+
     try:
         validate_email(email)
     except EmailNotValidError as e:
@@ -206,8 +208,7 @@ async def apply_to_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid email address: {str(e)}"
         )
-    
-    # Verify job exists and is open
+
     job = db.query(Job).filter(
         and_(
             Job.id == job_id,
@@ -215,25 +216,46 @@ async def apply_to_job(
             Job.status == JobStatusEnum.open
         )
     ).first()
-    
+
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found or not accepting applications"
         )
-    
-    # Save CV file
+
+    file_ext = os.path.splitext(cv.filename)[1].lower()
+
+    if file_ext not in settings.ALLOWED_CV_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF or Word documents are allowed"
+        )
+
+    contents = await cv.read()
+
+    if len(contents) > settings.CV_MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="CV file is too large"
+        )
+
+    job_dir = settings.CV_UPLOAD_DIR / str(job_id)
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = job_dir / filename
+
     try:
-        cv_file_path = await save_cv_file(cv, job_id)
-    except HTTPException:
-        raise
+        with open(file_path, "wb") as f:
+            f.write(contents)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process CV file: {str(e)}"
+            detail=f"Failed to save CV file: {str(e)}"
         )
-    
-    # Create job application
+
+    cv_public_url = f"/cv_uploads/{job_id}/{filename}"
+
     try:
         application = JobApplicant(
             job_id=job_id,
@@ -241,24 +263,26 @@ async def apply_to_job(
             email=email,
             phone=phone,
             cover_letter=cover_letter,
-            cv_file_path=cv_file_path
+            cv_file_path=cv_public_url
         )
-        
+
         db.add(application)
         db.commit()
         db.refresh(application)
-        
+
         return application
-    
+
     except Exception as e:
-        # Rollback and clean up file if database operation fails
+
+        if file_path.exists():
+            file_path.unlink()
+
         db.rollback()
-        from app.services.file_upload import delete_cv_file
-        delete_cv_file(cv_file_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create application: {str(e)}"
         )
+
 
 
 @router.get("/{job_id}/applications", response_model=PaginatedResponse[JobApplicationResponse])
