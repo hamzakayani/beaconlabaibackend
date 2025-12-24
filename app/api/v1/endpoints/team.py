@@ -134,41 +134,117 @@ async def add_team_member(
 @router.put("/{team_member_id}/update")
 async def update_team_member(
     team_member_id: int,
-    team_member_data: TeamMemberUpdate,
+    name: Optional[str] = Form(None, min_length=1, max_length=50),
+    category: Optional[str] = Form(None),
+    role: Optional[str] = Form(None, min_length=1, max_length=50),
+    designation: Optional[str] = Form(None, min_length=1, max_length=50),
+    description: Optional[str] = Form(None, min_length=1),
+    hyperlink: Optional[str] = Form(None, max_length=255),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):
     """
-    Update a team member by ID
+    Update a team member by ID with optional image upload
     """
-
     team_member = db.query(TeamMember).filter(
         TeamMember.id == team_member_id,
         TeamMember.is_deleted == False
-        ).first()
+    ).first()
     if not team_member:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
-        detail="Team member not found"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team member not found"
         )
 
-    if team_member.name != team_member_data.name:
-        team_member.name = team_member_data.name
-    if team_member.category != team_member_data.category:
-        team_member.category = team_member_data.category
-    if team_member.role != team_member_data.role:
-        team_member.role = team_member_data.role
-    if team_member.designation != team_member_data.designation:
-        team_member.designation = team_member_data.designation
-    if team_member.description != team_member_data.description:
-        team_member.description = team_member_data.description
-    if team_member.image_url != team_member_data.image_url:
-        team_member.image_url = team_member_data.image_url
-    if team_member.hyperlink != team_member_data.hyperlink:
-        team_member.hyperlink = team_member_data.hyperlink
+    # Validate category if provided
+    team_category = None
+    if category is not None:
+        try:
+            team_category = TeamCategory(category)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid category. Must be one of: {[c.value for c in TeamCategory]}"
+            )
+
+    old_image_path = None
+    file_path = None
+    
+    # Handle image upload if provided
+    # If no file is provided, skip image handling and preserve existing image_url
+    if file and file.filename:
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only images are allowed"
+            )
+        
+        # Store old image path for deletion
+        if team_member.image_url:
+            old_image_path = Path(team_member.image_url)
+        
+        # Create filename with team_member_id
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"team_member_{team_member.id}_{timestamp}{file_ext}"
+        file_path = settings.IMAGES_UPLOAD_DIR / filename
+        
+        try:
+            contents = await file.read()
+            
+            if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="File is too large to upload."
+                )
+            
+            with open(file_path, "wb") as f:
+                f.write(contents)
+            
+            # Update team member with new image_url
+            team_member.image_url = str(file_path)
+            
+            # Delete old image if it exists
+            if old_image_path and old_image_path.exists():
+                try:
+                    old_image_path.unlink()
+                except Exception as e:
+                    # Log but don't fail if old image deletion fails
+                    pass
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Clean up: delete new file if update fails
+            if file_path and file_path.exists():
+                file_path.unlink()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error uploading image: {str(e)}"
+            )
+
+    # Update fields if provided
+    if name is not None:
+        team_member.name = name
+    if team_category is not None:
+        team_member.category = team_category.value
+    if role is not None:
+        team_member.role = role
+    if designation is not None:
+        team_member.designation = designation
+    if description is not None:
+        team_member.description = description
+    if hyperlink is not None:
+        team_member.hyperlink = hyperlink
+    
     team_member.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(team_member)
-    return team_member
+    
+    return {
+        "message": "Team member updated successfully",
+    }
 
 @router.get("/{team_member_id}/get", response_model=TeamMemberResponse)
 async def get_team_member(
