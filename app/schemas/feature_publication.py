@@ -5,15 +5,15 @@ from app.schemas.papers import DOIPaperCreate, PubmedPaperCreate
 
 # Request Schemas
 class ManualFeaturePublicationCreate(BaseModel):
-    title: str = Field(..., min_length=1)
-    abstract: Optional[str] = Field(..., min_length=1)
-    authers: Optional[str] = Field(..., min_length=1)
-    journal: Optional[str] = Field(..., min_length=1)
-    paper_id: Optional[str] = Field(..., min_length=1)
-    publish_date: Optional[str] = Field(..., min_length=1)
-    pubmed_id: Optional[str] = Field(..., min_length=1)
-    nct_number: Optional[str] = Field(..., min_length=1)
-    doi: Optional[str] = Field(..., min_length=1)
+    title: str
+    abstract: Optional[str] 
+    authers: Optional[str] 
+    journal: Optional[str] 
+    paper_id: Optional[str] 
+    publish_date: Optional[str] 
+    pubmed_id: Optional[str] 
+    nct_number: Optional[str] 
+    doi: Optional[str] 
 
 
 class FeaturePublicationUpdate(BaseModel):
