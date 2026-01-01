@@ -292,8 +292,7 @@ async def update_feature_publication(
         publication.nct_number = publication_data.nct_number
     if publication_data.doi is not None:
         publication.doi = publication_data.doi
-    if publication_data.image_url is not None:
-        publication.image_url = publication_data.image_url
+
     
     publication.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -301,7 +300,7 @@ async def update_feature_publication(
     
     return {
         "message": "Feature publication updated successfully",
-        "publication": publication
+        # "publication": publication
     }
 
 

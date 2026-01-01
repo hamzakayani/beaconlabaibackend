@@ -106,7 +106,6 @@ async def list_all_papers(
     page: int = Query(1, description="Page number"),
     size: int = Query(10, description="Max number of items to return"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
 ):
     """
     Get all papers with pagination
