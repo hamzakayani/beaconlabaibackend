@@ -149,3 +149,23 @@ async def list_all_papers(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch papers: {str(e)}"
         )
+         
+@router.delete("/delete/paper/{paper_id}")
+async def delete_paper(
+    paper_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found")
+        paper.is_deleted = True
+        db.commit()
+        return {"message": "The paper has been successfully deleted from the system."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
