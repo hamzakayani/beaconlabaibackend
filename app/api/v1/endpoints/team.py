@@ -63,7 +63,7 @@ async def add_team_member(
             category=team_category.value,
             role=role,
             designation=designation,
-            description=description,
+            description=description or "",
             image_url="",  # Will be updated after file upload
             hyperlink=hyperlink or ""
         )
@@ -118,7 +118,7 @@ async def add_team_member(
             category=team_category.value,
             role=role,
             designation=designation,
-            description=description,
+            description=description or "",
             image_url="",
             hyperlink=hyperlink or ""
         )
