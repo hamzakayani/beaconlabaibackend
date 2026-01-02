@@ -27,7 +27,7 @@ async def add_team_member(
     category: str = Form(...),
     role: str = Form(..., min_length=1, max_length=50),
     designation: str = Form(..., min_length=1, max_length=50),
-    description: str = Form(..., min_length=1),
+    description: Optional[str] = Form(None, min_length=1),
     hyperlink: Optional[str] = Form(None, max_length=255),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
