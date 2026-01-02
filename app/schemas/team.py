@@ -19,7 +19,7 @@ class TeamMemberCreate(BaseModel):
     category: TeamCategory
     role: str = Field(..., min_length=1, max_length=50)
     designation: str = Field(..., min_length=1, max_length=50)
-    description: str = Field(..., min_length=1)
+    description: Optional[str] = Field(None, min_length=1)
     image_url: Optional[str] = Field(None, max_length=255)
     hyperlink: Optional[str] = Field(None, max_length=255)
 
