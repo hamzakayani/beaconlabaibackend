@@ -11,6 +11,7 @@ class TeamCategory(str, Enum):
     LAB_ALUMNI = "lab alumni"
     CLINICAL_RESIDENT_AND_FELLOWS = "clinical resident and fellows"
     GRADUATE_AND_UNDERGRADUATE_STUDENTS = "graduate and undergraduate students"
+    MEDICAL_STUDENTS = "medical students"
 
 # Request Schemas
 class TeamMemberCreate(BaseModel):
