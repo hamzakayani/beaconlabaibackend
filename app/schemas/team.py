@@ -13,15 +13,15 @@ class TeamCategory(str, Enum):
     GRADUATE_AND_UNDERGRADUATE_STUDENTS = "graduate and undergraduate students"
     MEDICAL_STUDENTS = "medical students"
 
-# Request Schemas
-class TeamMemberCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
-    category: TeamCategory
-    role: str = Field(..., min_length=1, max_length=50)
-    designation: str = Field(..., min_length=1, max_length=50)
-    description: Optional[str] = Field(None, min_length=1)
-    image_url: Optional[str] = Field(None, max_length=255)
-    hyperlink: Optional[str] = Field(None, max_length=255)
+# # Request Schemas
+# class TeamMemberCreate(BaseModel):
+#     name: str = Field(..., min_length=1, max_length=50)
+#     category: TeamCategory
+#     role: str = Field(..., min_length=1, max_length=50)
+#     designation: str = Field(..., min_length=1, max_length=50)
+#     description: Optional[str] = Field(None, min_length=1)
+#     image_url: Optional[str] = Field(None, max_length=255)
+#     hyperlink: Optional[str] = Field(None, max_length=255)
 
 class TeamMemberUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=50)
