@@ -9,7 +9,6 @@ from sqlalchemy import and_
 from app.db.database import get_db
 from app.models.team import TeamMember
 from app.schemas.team import (
-    TeamMemberCreate,
     TeamMemberUpdate,
     TeamMemberResponse,
     TeamCategory,

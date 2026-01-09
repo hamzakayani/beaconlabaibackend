@@ -1,12 +1,13 @@
+from typing import Optional
 from pydantic import BaseModel
 
 class DOIPaperCreate(BaseModel):
     doi: str
-    nct_number: str = ""
+    nct_number: Optional[str] = ""
 
 class PubmedPaperCreate(BaseModel):
     pm_id: str 
-    nct_number: str = ""
+    nct_number: Optional[str] = None
 
 class PaperResponse(BaseModel):
     id: int
