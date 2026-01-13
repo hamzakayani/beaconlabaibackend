@@ -13,7 +13,7 @@ from app.services.papers import doi_fetch, e_fetch
 
 router = APIRouter()
 
-@router.post("/add/doi/{project_id}")
+@router.post("/add/doi")
 async def add_paper_by_doi(
     paper: DOIPaperCreate,
     db: Session = Depends(get_db),
@@ -62,7 +62,7 @@ async def add_paper_by_doi(
             detail=str(e.detail)
         )
 
-@router.post("/add/pubmed/{project_id}")
+@router.post("/add/pubmed")
 async def add_paper_by_pubmed_id(
     paper: PubmedPaperCreate,
     db: Session = Depends(get_db),
@@ -101,7 +101,7 @@ async def add_paper_by_pubmed_id(
             detail=str(e)
         )
 
-@router.post("/add/manual/{project_id}")
+@router.post("/add/manual")
 async def add_paper_manual(
     paper_data: ManualPaperCreate,
     db: Session = Depends(get_db),
