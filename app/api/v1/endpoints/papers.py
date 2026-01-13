@@ -2,7 +2,7 @@
 from math import ceil
 from app.models.papers import Paper
 from app.schemas.pagination import PageInfo, PaginatedResponse
-from app.schemas.papers import DOIPaperCreate, PaperResponse, PubmedPaperCreate
+from app.schemas.papers import DOIPaperCreate, ManualPaperCreate, PaperResponse, PubmedPaperCreate
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -99,6 +99,44 @@ async def add_paper_by_pubmed_id(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+
+@router.post("/add/manual/{project_id}")
+async def add_paper_manual(
+    paper_data: ManualPaperCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Add a new paper manually (Authenticated users only)
+    """
+    try:
+        db_paper = Paper(
+            title=paper_data.title,
+            abstract=paper_data.abstract,
+            authers=paper_data.authers,
+            journal=paper_data.journal,
+            paper_id=paper_data.paper_id,
+            publish_date=paper_data.publish_date,
+            pubmed_id=paper_data.pubmed_id,
+            nct_number=paper_data.nct_number,
+            doi=paper_data.doi
+        )
+
+        db.add(db_paper)
+        db.commit()
+        db.refresh(db_paper)
+
+        return {
+            "message": "The paper has been successfully added to the system.",
+            "paper_id": db_paper.id
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to add paper: {str(e)}"
         )
 
 @router.get("/list_all_papers", response_model=PaginatedResponse[PaperResponse])

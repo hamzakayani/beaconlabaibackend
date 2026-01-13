@@ -1,4 +1,6 @@
 import requests
+import time
+from bs4 import BeautifulSoup
 try:
     import xml.etree.cElementTree as ET
 except ImportError:
