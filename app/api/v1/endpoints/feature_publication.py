@@ -32,13 +32,18 @@ async def add_feature_publication_manual(
     """
     Add a new feature publication manually (Authenticated users only)
     """
+    if not publication_data.doi and not publication_data.pubmed_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="DOI or PubMED ID is required"
+        )
+
     try:
         feature_publication = FeaturePublication(
             title=publication_data.title,
             abstract=publication_data.abstract,
             authers=publication_data.authers,
             journal=publication_data.journal,
-            paper_id=publication_data.paper_id,
             publish_date=publication_data.publish_date,
             pubmed_id=publication_data.pubmed_id,
             nct_number=publication_data.nct_number,
@@ -94,14 +99,13 @@ async def add_feature_publication_by_doi(
         
         # Create new feature publication entry
         db_publication = FeaturePublication(
-            paper_id=paper.doi,
             nct_number=paper.nct_number,
             title=res[0]['title'],
             abstract=res[0]['abstract'],
             publish_date=publish_date2,
             authers=comma_separated_authors,
             journal=res[0]['journal'],
-            doi=paper.doi
+            doi=paper.doi,
         )
 
         db.add(db_publication)
@@ -146,13 +150,12 @@ async def add_feature_publication_by_pubmed_id(
         
         # Create new feature publication entry
         db_publication = FeaturePublication(
-            paper_id=paper.pm_id,
             nct_number=paper.nct_number,
             title=paper_data['title'],
             abstract=paper_data['abstract'],
             publish_date=publish_date2,
             authers=authers2,
-            pubmed_id=paper.pm_id
+            pubmed_id=paper.pm_id,
         )
 
         db.add(db_publication)
@@ -282,8 +285,6 @@ async def update_feature_publication(
         publication.authers = publication_data.authers
     if publication_data.journal is not None:
         publication.journal = publication_data.journal
-    if publication_data.paper_id is not None:
-        publication.paper_id = publication_data.paper_id
     if publication_data.publish_date is not None:
         publication.publish_date = publication_data.publish_date
     if publication_data.pubmed_id is not None:

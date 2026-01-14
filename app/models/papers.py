@@ -15,7 +15,6 @@ class Paper(Base):
     abstract = Column(Text, nullable=True, default="")
     authers = Column(Text, default="")
     journal = Column(Text,default="")
-    paper_id = Column(String(100), default="", index=True)
     publish_date = Column(String(250), default="", index=True)
     pubmed_id = Column(String(100), default="", index=True)
     nct_number = Column(String(50), default="",index=True)

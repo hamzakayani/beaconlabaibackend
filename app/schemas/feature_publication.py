@@ -9,7 +9,6 @@ class ManualFeaturePublicationCreate(BaseModel):
     abstract: Optional[str] 
     authers: Optional[str] 
     journal: Optional[str] 
-    paper_id: Optional[str] 
     publish_date: Optional[str] 
     pubmed_id: Optional[str] 
     nct_number: Optional[str] 
@@ -21,7 +20,6 @@ class FeaturePublicationUpdate(BaseModel):
     abstract: Optional[str] = None
     authers: Optional[str] = None
     journal: Optional[str] = None
-    paper_id: Optional[str] = None
     publish_date: Optional[str] = None
     pubmed_id: Optional[str] = None
     nct_number: Optional[str] = None
@@ -36,7 +34,6 @@ class FeaturePublicationResponse(BaseModel):
     abstract: str
     authers: str
     journal: str
-    paper_id: str
     publish_date: str
     pubmed_id: str
     nct_number: str
@@ -46,4 +43,3 @@ class FeaturePublicationResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

@@ -2,7 +2,7 @@
 from math import ceil
 from app.models.papers import Paper
 from app.schemas.pagination import PageInfo, PaginatedResponse
-from app.schemas.papers import DOIPaperCreate, ManualPaperCreate, PaperResponse, PubmedPaperCreate
+from app.schemas.papers import DOIPaperCreate, ManualPaperCreate, PaperResponse, PaperUpdate, PubmedPaperCreate
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -41,7 +41,7 @@ async def add_paper_by_doi(
         publish_date2 = res[0]['pub_date']
         # Create new paper entry
         db_paper = Paper(
-            paper_id=paper.doi,
+            doi=paper.doi,
             nct_number = paper.nct_number,
             title = res[0]['title'],
             abstract = res[0]['abstract'],
@@ -81,7 +81,7 @@ async def add_paper_by_pubmed_id(
         authers2 = ", ".join(author['name'] for author in result['result'][result['result']['uids'][0]]['authors'])
         # Create new paper entry
         db_paper = Paper(
-            paper_id=paper.pm_id,
+            pubmed_id=paper.pm_id,
             nct_number = paper.nct_number,
             title = result['result'][result['result']['uids'][0]]['title'],
             abstract = result['result'][result['result']['uids'][0]]['abstract'],
@@ -110,13 +110,18 @@ async def add_paper_manual(
     """
     Add a new paper manually (Authenticated users only)
     """
+
+    if not paper_data.doi and not paper_data.pubmed_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="DOI or PubMED ID is required"
+        )
     try:
         db_paper = Paper(
             title=paper_data.title,
             abstract=paper_data.abstract,
             authers=paper_data.authers,
             journal=paper_data.journal,
-            paper_id=paper_data.paper_id,
             publish_date=paper_data.publish_date,
             pubmed_id=paper_data.pubmed_id,
             nct_number=paper_data.nct_number,
@@ -129,7 +134,6 @@ async def add_paper_manual(
 
         return {
             "message": "The paper has been successfully added to the system.",
-            "paper_id": db_paper.id
         }
 
     except Exception as e:
@@ -138,6 +142,44 @@ async def add_paper_manual(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to add paper: {str(e)}"
         )
+
+@router.put("/update/paper/{paper_id}")
+async def update_paper(
+    paper_id: int,
+    paper_data: PaperUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Paper not found"
+                )
+        if paper_data.title is not None:
+            paper.title = paper_data.title
+        if paper_data.abstract is not None:
+            paper.abstract = paper_data.abstract
+        if paper_data.authers is not None:
+            paper.authers = paper_data.authers
+        if paper_data.journal is not None:
+            paper.journal = paper_data.journal
+        if paper_data.publish_date is not None:
+            paper.publish_date = paper_data.publish_date
+        if paper_data.pubmed_id is not None:
+            paper.pubmed_id = paper_data.pubmed_id
+        if paper_data.nct_number is not None:
+            paper.nct_number = paper_data.nct_number
+        if paper_data.doi is not None:
+            paper.doi = paper_data.doi
+        db.commit()
+        return {"message": "The paper has been successfully updated."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to update paper: {str(e)}")
+
 
 @router.get("/list_all_papers", response_model=PaginatedResponse[PaperResponse])
 async def list_all_papers(
