@@ -3,6 +3,7 @@ from typing import Optional
 from math import ceil
 from pathlib import Path
 import os
+from app.services.file_upload import save_image
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -133,18 +134,20 @@ async def add_team_member(
 @router.put("/{team_member_id}/update")
 async def update_team_member(
     team_member_id: int,
-    name: Optional[str] = Form(None, min_length=1, max_length=50),
+    name: Optional[str] = Form(None, max_length=50),
     category: Optional[str] = Form(None),
-    role: Optional[str] = Form(None, min_length=1, max_length=50),
-    designation: Optional[str] = Form(None, min_length=1, max_length=50),
-    description: Optional[str] = Form(None, min_length=1),
+    role: Optional[str] = Form(None, max_length=50),
+    designation: Optional[str] = Form(None, max_length=50),
+    description: Optional[str] = Form(None),
     hyperlink: Optional[str] = Form(None, max_length=255),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):
     """
-    Update a team member by ID with optional image upload
+    Update a team member by ID with optional image upload.
+    To remove a field, send an empty string for that field.
+    Note: Team category cannot be set to None or empty - it must be a valid category value.
     """
     team_member = db.query(TeamMember).filter(
         TeamMember.id == team_member_id,
@@ -155,8 +158,32 @@ async def update_team_member(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Team member not found"
         )
+    
+    if name is not None and name == "":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Team name is required"
+        )
 
-    # Validate category if provided
+    if role is not None and role == "":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Team role is required"
+        )
+
+    if designation is not None and designation == "":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Team designation is required"
+        )
+
+    if category is not None and category == "":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Team category is required"
+        )
+
+
     team_category = None
     if category is not None:
         try:
@@ -167,73 +194,29 @@ async def update_team_member(
                 detail=f"Invalid category. Must be one of: {[c.value for c in TeamCategory]}"
             )
 
-    old_image_path = None
-    file_path = None
-    
-    # Handle image upload if provided
-    # If no file is provided, skip image handling and preserve existing image_url
-    if file and file.filename:
-        file_ext = os.path.splitext(file.filename)[1].lower()
-        if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only images are allowed"
-            )
-        
-        # Store old image path for deletion
+    if file:
+        old_image_path = None
         if team_member.image_url:
-            old_image_path = Path(team_member.image_url)
-        
-        # Create filename with team_member_id
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"team_member_{team_member.id}_{timestamp}{file_ext}"
-        file_path = settings.IMAGES_UPLOAD_DIR / filename
-        
-        try:
-            contents = await file.read()
-            
-            if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail="File is too large to upload."
-                )
-            
-            with open(file_path, "wb") as f:
-                f.write(contents)
-            
-            # Update team member with new image_url
-            team_member.image_url = f"/images/{filename}"
-            
-            # Delete old image if it exists
-            if old_image_path and old_image_path.exists():
-                try:
-                    old_image_path.unlink()
-                except Exception as e:
-                    # Log but don't fail if old image deletion fails
-                    pass
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            # Clean up: delete new file if update fails
-            if file_path and file_path.exists():
-                file_path.unlink()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error uploading image: {str(e)}"
-            )
+            filename = team_member.image_url.replace("/images/", "")
+            old_image_path = settings.IMAGES_UPLOAD_DIR / filename
+        image_url = await save_image(path_prefix="team_member", file=file, old_image_path=old_image_path)
+        team_member.image_url = image_url
 
-    # Update fields if provided
     if name is not None:
         team_member.name = name
-    if team_category is not None:
+
+    if category is not None:
         team_member.category = team_category.value
+
     if role is not None:
         team_member.role = role
+
     if designation is not None:
         team_member.designation = designation
+
     if description is not None:
         team_member.description = description
+    
     if hyperlink is not None:
         team_member.hyperlink = hyperlink
     
