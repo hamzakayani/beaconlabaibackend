@@ -6,5 +6,5 @@ alembic/versions/
 images/
 *.pyc
 __pycache__/
-*.log
+logs/
 cv_uploads/

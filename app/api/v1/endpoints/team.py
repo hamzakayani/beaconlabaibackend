@@ -159,29 +159,29 @@ async def update_team_member(
             detail="Team member not found"
         )
     
-    if name is not None and name == "":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Team name is required"
-        )
+    # if name is not None and name == "":
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Team name is required"
+    #     )
 
-    if role is not None and role == "":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Team role is required"
-        )
+    # if role is not None and role == "":
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Team role is required"
+    #     )
 
-    if designation is not None and designation == "":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Team designation is required"
-        )
+    # if designation is not None and designation == "":
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Team designation is required"
+    #     )
 
-    if category is not None and category == "":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Team category is required"
-        )
+    # if category is not None and category == "":
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Team category is required"
+    #     )
 
 
     team_category = None
@@ -204,21 +204,33 @@ async def update_team_member(
 
     if name is not None:
         team_member.name = name
+    elif not name:
+        team_member.name = ""
 
     if category is not None:
         team_member.category = team_category.value
+    elif not category:
+        team_member.category = ""
 
     if role is not None:
         team_member.role = role
+    elif not role:
+        team_member.role = ""
 
     if designation is not None:
         team_member.designation = designation
+    elif not designation:
+        team_member.designation = ""
 
     if description is not None:
         team_member.description = description
+    elif not description:
+        team_member.description = ""
     
     if hyperlink is not None:
         team_member.hyperlink = hyperlink
+    elif not hyperlink:
+        team_member.hyperlink = ""
     
     team_member.updated_at = datetime.now(timezone.utc)
     db.commit()
