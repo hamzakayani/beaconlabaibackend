@@ -230,7 +230,7 @@ async def list_feature_publications(
             has_previous=page > 1
         )
         
-        return PaginatedResponse[FeaturePublicationResponse](
+        return PaginatedResponse(
             items=publications,
             page_info=page_info
         )
