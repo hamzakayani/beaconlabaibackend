@@ -23,6 +23,7 @@ from app.schemas.jobs import (
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
 from app.services.file_upload import save_cv_file
+from app.services.reorder import reorder_item
 
 router = APIRouter()
 
@@ -76,7 +77,7 @@ async def list_jobs(
     total_items = query.count()
     total_pages = ceil(total_items / size) if total_items > 0 else 0
 
-    items = query.order_by(Job.created_at.desc()).offset((page - 1) * size).limit(size).all()
+    items = query.order_by(Job.order).offset((page - 1) * size).limit(size).all()
     
     page_info = PageInfo(
         total=total_items,
@@ -140,6 +141,14 @@ async def update_job(
             detail="Job not found"
         )
     
+    # Check if order is being updated and needs reordering
+    order_changed = False
+    new_order = None
+    
+    if job_data.order is not None and job_data.order != job.order:
+        order_changed = True
+        new_order = job_data.order
+    
     if job_data.title is not None:
         job.title = job_data.title
     if job_data.job_type is not None:
@@ -160,8 +169,20 @@ async def update_job(
         job.required_qualifications = job_data.required_qualifications
     if job_data.preferred_qualifications is not None:
         job.preferred_qualifications = job_data.preferred_qualifications
-    if job_data.order is not None:
-        job.order = job_data.order
+    # Note: order is handled by reorder_item service below
+
+    # If order changed, perform reordering
+    if order_changed:
+        try:
+            reorder_item(db, Job, job_id, new_order)
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to reorder: {str(e)}"
+            )
     
     job.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -342,77 +363,77 @@ async def list_job_applications(
     return PaginatedResponse(items=items, page_info=page_info)
 
 
-@router.put("/reorder/{job_id}")
-async def reorder_job(
-    job_id: int,
-    request: ReorderJobRequest,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Reorder a job (admin only)
-    """
-    job = db.query(Job).filter(
-        Job.id == job_id,
-        Job.is_deleted == False
-    ).first()
+# @router.put("/reorder/{job_id}")
+# async def reorder_job(
+#     job_id: int,
+#     request: ReorderJobRequest,
+#     db: Session = Depends(get_db),
+#     current_user = Depends(get_current_admin)
+# ):
+#     """
+#     Reorder a job (admin only)
+#     """
+#     job = db.query(Job).filter(
+#         Job.id == job_id,
+#         Job.is_deleted == False
+#     ).first()
     
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+#     if not job:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Job not found"
+#         )
     
-    # Get all siblings (all non-deleted jobs)
-    siblings = db.query(Job).filter(
-        Job.is_deleted == False,
-        Job.id != job_id
-    ).order_by(Job.order).all()
+#     # Get all siblings (all non-deleted jobs)
+#     siblings = db.query(Job).filter(
+#         Job.is_deleted == False,
+#         Job.id != job_id
+#     ).order_by(Job.order).all()
     
-    max_order = len(siblings) + 1
+#     max_order = len(siblings) + 1
     
-    if request.order <= 0 or request.order > max_order:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Order must be between 1 and {max_order}"
-        )
+#     if request.order <= 0 or request.order > max_order:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Order must be between 1 and {max_order}"
+#         )
     
-    if request.order == job.order:
-        return {"message": "Job is already at the desired order"}
+#     if request.order == job.order:
+#         return {"message": "Job is already at the desired order"}
     
-    try:
-        if request.order > job.order:
-            # Moving forward - decrease order of items between old and new position
-            affected_items = db.query(Job).filter(
-                Job.is_deleted == False,
-                Job.id != job_id,
-                Job.order > job.order,
-                Job.order <= request.order
-            ).order_by(Job.order).all()
+#     try:
+#         if request.order > job.order:
+#             # Moving forward - decrease order of items between old and new position
+#             affected_items = db.query(Job).filter(
+#                 Job.is_deleted == False,
+#                 Job.id != job_id,
+#                 Job.order > job.order,
+#                 Job.order <= request.order
+#             ).order_by(Job.order).all()
             
-            for item in affected_items:
-                item.order -= 1
-        else:
-            # Moving backward - increase order of items between new and old position
-            affected_items = db.query(Job).filter(
-                Job.is_deleted == False,
-                Job.id != job_id,
-                Job.order >= request.order,
-                Job.order < job.order
-            ).order_by(Job.order).all()
+#             for item in affected_items:
+#                 item.order -= 1
+#         else:
+#             # Moving backward - increase order of items between new and old position
+#             affected_items = db.query(Job).filter(
+#                 Job.is_deleted == False,
+#                 Job.id != job_id,
+#                 Job.order >= request.order,
+#                 Job.order < job.order
+#             ).order_by(Job.order).all()
             
-            for item in affected_items:
-                item.order += 1
+#             for item in affected_items:
+#                 item.order += 1
         
-        job.order = request.order
+#         job.order = request.order
         
-        db.commit()
-        return {"message": "Job reordered successfully"}
+#         db.commit()
+#         return {"message": "Job reordered successfully"}
         
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(e)
+#         )
 

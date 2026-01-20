@@ -16,6 +16,7 @@ from app.schemas.team import (
 )
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
+from app.services.reorder import reorder_item
 from app.core.config import settings
 
 router = APIRouter()
@@ -163,6 +164,14 @@ async def update_team_member(
             detail="Team member not found"
         )
 
+    # Check if order is being updated and needs reordering
+    order_changed = False
+    new_order = None
+    
+    if order is not None and order != team_member.order:
+        order_changed = True
+        new_order = order
+
     team_category = None
     if category is not None:
         try:
@@ -210,9 +219,20 @@ async def update_team_member(
         team_member.hyperlink = hyperlink
     elif not hyperlink:
         team_member.hyperlink = ""
-    
-    if order is not None:
-        team_member.order = order
+    # Note: order is handled by reorder_item service below
+
+    # If order changed, perform reordering
+    if order_changed:
+        try:
+            reorder_item(db, TeamMember, team_member_id, new_order)
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to reorder: {str(e)}"
+            )
     
     team_member.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -259,8 +279,8 @@ async def list_team_members(
             TeamMember.name.ilike(f"%{search}%")
         )
     
-    # Order by created_at descending
-    query = query.order_by(TeamMember.created_at.desc())
+    # Order by order field
+    query = query.order_by(TeamMember.order)
     
     # Get total count before pagination
     total_items = query.count()
@@ -305,77 +325,77 @@ async def delete_team_member(
     }
 
 
-@router.put("/reorder/{team_member_id}")
-async def reorder_team_member(
-    team_member_id: int,
-    request: ReorderTeamMemberRequest,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Reorder a team member (admin only)
-    """
-    team_member = db.query(TeamMember).filter(
-        TeamMember.id == team_member_id,
-        TeamMember.is_deleted == False
-    ).first()
+# @router.put("/reorder/{team_member_id}")
+# async def reorder_team_member(
+#     team_member_id: int,
+#     request: ReorderTeamMemberRequest,
+#     db: Session = Depends(get_db),
+#     current_user = Depends(get_current_admin)
+# ):
+#     """
+#     Reorder a team member (admin only)
+#     """
+#     team_member = db.query(TeamMember).filter(
+#         TeamMember.id == team_member_id,
+#         TeamMember.is_deleted == False
+#     ).first()
     
-    if not team_member:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Team member not found"
-        )
+#     if not team_member:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Team member not found"
+#         )
     
-    # Get all siblings (all non-deleted team members)
-    siblings = db.query(TeamMember).filter(
-        TeamMember.is_deleted == False,
-        TeamMember.id != team_member_id
-    ).order_by(TeamMember.order).all()
+#     # Get all siblings (all non-deleted team members)
+#     siblings = db.query(TeamMember).filter(
+#         TeamMember.is_deleted == False,
+#         TeamMember.id != team_member_id
+#     ).order_by(TeamMember.order).all()
     
-    max_order = len(siblings) + 1
+#     max_order = len(siblings) + 1
     
-    if request.order <= 0 or request.order > max_order:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Order must be between 1 and {max_order}"
-        )
+#     if request.order <= 0 or request.order > max_order:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Order must be between 1 and {max_order}"
+#         )
     
-    if request.order == team_member.order:
-        return {"message": "Team member is already at the desired order"}
+#     if request.order == team_member.order:
+#         return {"message": "Team member is already at the desired order"}
     
-    try:
-        if request.order > team_member.order:
-            # Moving forward - decrease order of items between old and new position
-            affected_items = db.query(TeamMember).filter(
-                TeamMember.is_deleted == False,
-                TeamMember.id != team_member_id,
-                TeamMember.order > team_member.order,
-                TeamMember.order <= request.order
-            ).order_by(TeamMember.order).all()
+#     try:
+#         if request.order > team_member.order:
+#             # Moving forward - decrease order of items between old and new position
+#             affected_items = db.query(TeamMember).filter(
+#                 TeamMember.is_deleted == False,
+#                 TeamMember.id != team_member_id,
+#                 TeamMember.order > team_member.order,
+#                 TeamMember.order <= request.order
+#             ).order_by(TeamMember.order).all()
             
-            for item in affected_items:
-                item.order -= 1
-        else:
-            # Moving backward - increase order of items between new and old position
-            affected_items = db.query(TeamMember).filter(
-                TeamMember.is_deleted == False,
-                TeamMember.id != team_member_id,
-                TeamMember.order >= request.order,
-                TeamMember.order < team_member.order
-            ).order_by(TeamMember.order).all()
+#             for item in affected_items:
+#                 item.order -= 1
+#         else:
+#             # Moving backward - increase order of items between new and old position
+#             affected_items = db.query(TeamMember).filter(
+#                 TeamMember.is_deleted == False,
+#                 TeamMember.id != team_member_id,
+#                 TeamMember.order >= request.order,
+#                 TeamMember.order < team_member.order
+#             ).order_by(TeamMember.order).all()
             
-            for item in affected_items:
-                item.order += 1
+#             for item in affected_items:
+#                 item.order += 1
         
-        team_member.order = request.order
+#         team_member.order = request.order
         
-        db.commit()
-        return {"message": "Team member reordered successfully"}
+#         db.commit()
+#         return {"message": "Team member reordered successfully"}
         
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(e)
+#         )
 

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.services.auth import get_current_active_user
 from app.models.user import User
+from app.services.reorder import reorder_item
 
 from app.services.papers import doi_fetch, e_fetch
 
@@ -164,6 +165,15 @@ async def update_paper(
                 status_code=status.HTTP_404_NOT_FOUND, 
                 detail="Paper not found"
                 )
+        
+        # Check if order is being updated and needs reordering
+        order_changed = False
+        new_order = None
+        
+        if paper_data.order is not None and paper_data.order != paper.order:
+            order_changed = True
+            new_order = paper_data.order
+        
         if paper_data.title is not None:
             paper.title = paper_data.title
         if paper_data.abstract is not None:
@@ -182,10 +192,25 @@ async def update_paper(
             paper.doi = paper_data.doi
         if paper_data.category is not None:
             paper.category = paper_data.category.value
-        if paper_data.order is not None:
-            paper.order = paper_data.order
+        # Note: order is handled by reorder_item service below
+
+        # If order changed, perform reordering
+        if order_changed:
+            try:
+                reorder_item(db, Paper, paper_id, new_order)
+            except HTTPException:
+                raise
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to reorder: {str(e)}"
+                )
+        
         db.commit()
         return {"message": "The paper has been successfully updated."}
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to update paper: {str(e)}")
@@ -204,8 +229,8 @@ async def list_all_papers(
         # Build query with soft delete filter
         query = db.query(Paper).filter(Paper.is_deleted == False)
         
-        # Order by created_at descending
-        query = query.order_by(Paper.created_at.desc())
+        # Order by order field
+        query = query.order_by(Paper.order)
         
         # Get total count
         total_items = query.count()
@@ -261,76 +286,76 @@ async def delete_paper(
         )
 
 
-@router.put("/reorder/{paper_id}")
-async def reorder_paper(
-    paper_id: int,
-    request: ReorderPaperRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    Reorder a paper (Authenticated users only)
-    """
-    paper = db.query(Paper).filter(
-        Paper.id == paper_id,
-        Paper.is_deleted == False
-    ).first()
+# @router.put("/reorder/{paper_id}")
+# async def reorder_paper(
+#     paper_id: int,
+#     request: ReorderPaperRequest,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_active_user)
+# ):
+#     """
+#     Reorder a paper (Authenticated users only)
+#     """
+#     paper = db.query(Paper).filter(
+#         Paper.id == paper_id,
+#         Paper.is_deleted == False
+#     ).first()
     
-    if not paper:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Paper not found"
-        )
+#     if not paper:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Paper not found"
+#         )
     
-    # Get all siblings (all non-deleted papers)
-    siblings = db.query(Paper).filter(
-        Paper.is_deleted == False,
-        Paper.id != paper_id
-    ).order_by(Paper.order).all()
+#     # Get all siblings (all non-deleted papers)
+#     siblings = db.query(Paper).filter(
+#         Paper.is_deleted == False,
+#         Paper.id != paper_id
+#     ).order_by(Paper.order).all()
     
-    max_order = len(siblings) + 1
+#     max_order = len(siblings) + 1
     
-    if request.order <= 0 or request.order > max_order:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Order must be between 1 and {max_order}"
-        )
+#     if request.order <= 0 or request.order > max_order:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Order must be between 1 and {max_order}"
+#         )
     
-    if request.order == paper.order:
-        return {"message": "Paper is already at the desired order"}
+#     if request.order == paper.order:
+#         return {"message": "Paper is already at the desired order"}
     
-    try:
-        if request.order > paper.order:
-            # Moving forward - decrease order of items between old and new position
-            affected_items = db.query(Paper).filter(
-                Paper.is_deleted == False,
-                Paper.id != paper_id,
-                Paper.order > paper.order,
-                Paper.order <= request.order
-            ).order_by(Paper.order).all()
+#     try:
+#         if request.order > paper.order:
+#             # Moving forward - decrease order of items between old and new position
+#             affected_items = db.query(Paper).filter(
+#                 Paper.is_deleted == False,
+#                 Paper.id != paper_id,
+#                 Paper.order > paper.order,
+#                 Paper.order <= request.order
+#             ).order_by(Paper.order).all()
             
-            for item in affected_items:
-                item.order -= 1
-        else:
-            # Moving backward - increase order of items between new and old position
-            affected_items = db.query(Paper).filter(
-                Paper.is_deleted == False,
-                Paper.id != paper_id,
-                Paper.order >= request.order,
-                Paper.order < paper.order
-            ).order_by(Paper.order).all()
+#             for item in affected_items:
+#                 item.order -= 1
+#         else:
+#             # Moving backward - increase order of items between new and old position
+#             affected_items = db.query(Paper).filter(
+#                 Paper.is_deleted == False,
+#                 Paper.id != paper_id,
+#                 Paper.order >= request.order,
+#                 Paper.order < paper.order
+#             ).order_by(Paper.order).all()
             
-            for item in affected_items:
-                item.order += 1
+#             for item in affected_items:
+#                 item.order += 1
         
-        paper.order = request.order
+#         paper.order = request.order
         
-        db.commit()
-        return {"message": "Paper reordered successfully"}
+#         db.commit()
+#         return {"message": "Paper reordered successfully"}
         
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(e)
+#         )

@@ -20,6 +20,7 @@ from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_active_user
 from app.models.user import User
 from app.services.papers import doi_fetch, e_fetch
+from app.services.reorder import reorder_item
 from app.core.config import settings
 
 router = APIRouter()
@@ -207,8 +208,8 @@ async def list_feature_publications(
                 FeaturePublication.title.ilike(f"%{search}%")
             )
         
-        # Order by created_at descending
-        query = query.order_by(FeaturePublication.created_at.desc())
+        # Order by order field
+        query = query.order_by(FeaturePublication.order)
         
         # Get total count
         total_items = query.count()
@@ -284,6 +285,14 @@ async def update_feature_publication(
             detail="Feature publication not found"
         )
 
+    # Check if order is being updated and needs reordering
+    order_changed = False
+    new_order = None
+    
+    if publication_data.order is not None and publication_data.order != publication.order:
+        order_changed = True
+        new_order = publication_data.order
+
     # Update fields if provided
     if publication_data.title is not None:
         publication.title = publication_data.title
@@ -303,9 +312,20 @@ async def update_feature_publication(
         publication.is_presentation = publication_data.is_presentation
     if publication_data.doi is not None:
         publication.doi = publication_data.doi
-    if publication_data.order is not None:
-        publication.order = publication_data.order
+    # Note: order is handled by reorder_item service below
 
+    # If order changed, perform reordering
+    if order_changed:
+        try:
+            reorder_item(db, FeaturePublication, publication_id, new_order)
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to reorder: {str(e)}"
+            )
     
     publication.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -474,76 +494,25 @@ async def delete_image(
         )
 
 
-@router.put("/reorder/{publication_id}")
-async def reorder_feature_publication(
-    publication_id: int,
-    request: ReorderFeaturePublicationRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    Reorder a feature publication (Authenticated users only)
-    """
-    publication = db.query(FeaturePublication).filter(
-        FeaturePublication.id == publication_id,
-        FeaturePublication.is_deleted == False
-    ).first()
-    
-    if not publication:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Feature publication not found"
-        )
-    
-    # Get all siblings (all non-deleted feature publications)
-    siblings = db.query(FeaturePublication).filter(
-        FeaturePublication.is_deleted == False,
-        FeaturePublication.id != publication_id
-    ).order_by(FeaturePublication.order).all()
-    
-    max_order = len(siblings) + 1
-    
-    if request.order <= 0 or request.order > max_order:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Order must be between 1 and {max_order}"
-        )
-    
-    if request.order == publication.order:
-        return {"message": "Feature publication is already at the desired order"}
-    
-    try:
-        if request.order > publication.order:
-            # Moving forward - decrease order of items between old and new position
-            affected_items = db.query(FeaturePublication).filter(
-                FeaturePublication.is_deleted == False,
-                FeaturePublication.id != publication_id,
-                FeaturePublication.order > publication.order,
-                FeaturePublication.order <= request.order
-            ).order_by(FeaturePublication.order).all()
-            
-            for item in affected_items:
-                item.order -= 1
-        else:
-            # Moving backward - increase order of items between new and old position
-            affected_items = db.query(FeaturePublication).filter(
-                FeaturePublication.is_deleted == False,
-                FeaturePublication.id != publication_id,
-                FeaturePublication.order >= request.order,
-                FeaturePublication.order < publication.order
-            ).order_by(FeaturePublication.order).all()
-            
-            for item in affected_items:
-                item.order += 1
-        
-        publication.order = request.order
-        
-        db.commit()
-        return {"message": "Feature publication reordered successfully"}
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+# @router.put("/reorder/{publication_id}")
+# async def reorder_feature_publication(
+#     publication_id: int,
+#     request: ReorderFeaturePublicationRequest,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_active_user)
+# ):
+#     """
+#     Reorder a feature publication (Authenticated users only)
+#     """
+#     try:
+#         reorder_item(db, FeaturePublication, publication_id, request.order)
+#         db.commit()
+#         return {"message": "Feature publication reordered successfully"}
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(e)
+#         )

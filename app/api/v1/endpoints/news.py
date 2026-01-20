@@ -11,6 +11,7 @@ from app.db.database import get_db
 from sqlalchemy import and_
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
+from app.services.reorder import reorder_item
 from app.core.config import settings
 from app.schemas.news import ReorderNewsRequest
 
@@ -138,6 +139,14 @@ async def update_news(
             detail="News not found"
         )
 
+    # Check if order is being updated and needs reordering
+    order_changed = False
+    new_order = None
+    
+    if order is not None and order != news.order:
+        order_changed = True
+        new_order = order
+
     old_image_path = None
     file_path = None
     
@@ -203,8 +212,21 @@ async def update_news(
         news.hyperlink = hyperlink
     if publish_date is not None:
         news.publish_date = publish_date
-    if order is not None:
-        news.order = order
+    # Note: order is handled by reorder_item service below
+
+    # If order changed, perform reordering
+    if order_changed:
+        try:
+            reorder_item(db, News, news_id, new_order)
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to reorder: {str(e)}"
+            )
+    
     news.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(news)
@@ -265,7 +287,7 @@ async def get_all_news(
     total_pages = ceil(total_items / size)
     
     # Apply pagination
-    items = query.order_by(News.publish_date.desc()).offset((page - 1) * size).limit(size).all()
+    items = query.order_by(News.order).offset((page - 1) * size).limit(size).all()
     
     page_info = PageInfo(
         total=total_items,
@@ -282,77 +304,77 @@ async def get_all_news(
         )
 
 
-@router.put("/reorder/{news_id}")
-async def reorder_news(
-    news_id: int,
-    request: ReorderNewsRequest,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    Reorder a news item (admin only)
-    """
-    news = db.query(News).filter(
-        News.id == news_id,
-        News.is_deleted == False
-    ).first()
+# @router.put("/reorder/{news_id}")
+# async def reorder_news(
+#     news_id: int,
+#     request: ReorderNewsRequest,
+#     db: Session = Depends(get_db),
+#     current_user = Depends(get_current_admin)
+# ):
+#     """
+#     Reorder a news item (admin only)
+#     """
+#     news = db.query(News).filter(
+#         News.id == news_id,
+#         News.is_deleted == False
+#     ).first()
     
-    if not news:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="News not found"
-        )
+#     if not news:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="News not found"
+#         )
     
-    # Get all siblings (all non-deleted news items)
-    siblings = db.query(News).filter(
-        News.is_deleted == False,
-        News.id != news_id
-    ).order_by(News.order).all()
+#     # Get all siblings (all non-deleted news items)
+#     siblings = db.query(News).filter(
+#         News.is_deleted == False,
+#         News.id != news_id
+#     ).order_by(News.order).all()
     
-    max_order = len(siblings) + 1
+#     max_order = len(siblings) + 1
     
-    if request.order <= 0 or request.order > max_order:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Order must be between 1 and {max_order}"
-        )
+#     if request.order <= 0 or request.order > max_order:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=f"Order must be between 1 and {max_order}"
+#         )
     
-    if request.order == news.order:
-        return {"message": "News is already at the desired order"}
+#     if request.order == news.order:
+#         return {"message": "News is already at the desired order"}
     
-    try:
-        if request.order > news.order:
-            # Moving forward - decrease order of items between old and new position
-            affected_items = db.query(News).filter(
-                News.is_deleted == False,
-                News.id != news_id,
-                News.order > news.order,
-                News.order <= request.order
-            ).order_by(News.order).all()
+#     try:
+#         if request.order > news.order:
+#             # Moving forward - decrease order of items between old and new position
+#             affected_items = db.query(News).filter(
+#                 News.is_deleted == False,
+#                 News.id != news_id,
+#                 News.order > news.order,
+#                 News.order <= request.order
+#             ).order_by(News.order).all()
             
-            for item in affected_items:
-                item.order -= 1
-        else:
-            # Moving backward - increase order of items between new and old position
-            affected_items = db.query(News).filter(
-                News.is_deleted == False,
-                News.id != news_id,
-                News.order >= request.order,
-                News.order < news.order
-            ).order_by(News.order).all()
+#             for item in affected_items:
+#                 item.order -= 1
+#         else:
+#             # Moving backward - increase order of items between new and old position
+#             affected_items = db.query(News).filter(
+#                 News.is_deleted == False,
+#                 News.id != news_id,
+#                 News.order >= request.order,
+#                 News.order < news.order
+#             ).order_by(News.order).all()
             
-            for item in affected_items:
-                item.order += 1
+#             for item in affected_items:
+#                 item.order += 1
         
-        news.order = request.order
+#         news.order = request.order
         
-        db.commit()
-        return {"message": "News reordered successfully"}
+#         db.commit()
+#         return {"message": "News reordered successfully"}
         
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(e)
+#         )
 
