@@ -1,9 +1,23 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from app.schemas.papers import DOIPaperCreate, PubmedPaperCreate
+
+class ReorderFeaturePublicationRequest(BaseModel):
+    order: int
 
 # Request Schemas
+
+class DOIFeaturePublicationCreate(BaseModel):
+    doi: str
+    nct_number: Optional[str] = None
+    is_presentation: bool= False
+    order: int = 1
+
+class PubmedFeaturePublicationCreate(BaseModel):
+    pm_id: str 
+    nct_number: Optional[str] = None
+    is_presentation: bool= False
+    order: int = 1
 class ManualFeaturePublicationCreate(BaseModel):
     title: str
     abstract: Optional[str] 
@@ -13,7 +27,8 @@ class ManualFeaturePublicationCreate(BaseModel):
     pubmed_id: Optional[str] 
     nct_number: Optional[str] 
     doi: Optional[str] 
-
+    is_presentation: bool= False
+    order: int = 1
 
 class FeaturePublicationUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1)
@@ -24,7 +39,8 @@ class FeaturePublicationUpdate(BaseModel):
     pubmed_id: Optional[str] = None
     nct_number: Optional[str] = None
     doi: Optional[str] = None
-
+    is_presentation: Optional[bool] = None
+    order: Optional[int] = None
 
 # Response Schema
 class FeaturePublicationResponse(BaseModel):
@@ -38,6 +54,8 @@ class FeaturePublicationResponse(BaseModel):
     pubmed_id: str
     nct_number: str
     doi: str
+    is_presentation: bool
+    order: int
     created_at: datetime
     updated_at: datetime
 

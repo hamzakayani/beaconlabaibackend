@@ -9,11 +9,13 @@ from sqlalchemy import and_
 from app.db.database import get_db
 from app.models.feature_publication import FeaturePublication
 from app.schemas.feature_publication import (
+    DOIFeaturePublicationCreate,
     ManualFeaturePublicationCreate,
     FeaturePublicationUpdate,
     FeaturePublicationResponse,
+    PubmedFeaturePublicationCreate,
+    ReorderFeaturePublicationRequest,
 )
-from app.schemas.papers import DOIPaperCreate, PubmedPaperCreate
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_active_user
 from app.models.user import User
@@ -47,7 +49,9 @@ async def add_feature_publication_manual(
             publish_date=publication_data.publish_date,
             pubmed_id=publication_data.pubmed_id,
             nct_number=publication_data.nct_number,
-            doi=publication_data.doi
+            doi=publication_data.doi,
+            is_presentation=publication_data.is_presentation,
+            order=publication_data.order
         )
 
         db.add(feature_publication)
@@ -69,7 +73,7 @@ async def add_feature_publication_manual(
 
 @router.post("/add/doi")
 async def add_feature_publication_by_doi(
-    paper: DOIPaperCreate,
+    paper: DOIFeaturePublicationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -106,6 +110,8 @@ async def add_feature_publication_by_doi(
             authers=comma_separated_authors,
             journal=res[0]['journal'],
             doi=paper.doi,
+            is_presentation=paper.is_presentation,
+            order=paper.order
         )
 
         db.add(db_publication)
@@ -129,7 +135,7 @@ async def add_feature_publication_by_doi(
 
 @router.post("/add/pubmed")
 async def add_feature_publication_by_pubmed_id(
-    paper: PubmedPaperCreate,
+    paper: PubmedFeaturePublicationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -156,6 +162,8 @@ async def add_feature_publication_by_pubmed_id(
             publish_date=publish_date2,
             authers=authers2,
             pubmed_id=paper.pm_id,
+            is_presentation=paper.is_presentation,
+            order=paper.order
         )
 
         db.add(db_publication)
@@ -291,8 +299,12 @@ async def update_feature_publication(
         publication.pubmed_id = publication_data.pubmed_id
     if publication_data.nct_number is not None:
         publication.nct_number = publication_data.nct_number
+    if publication_data.is_presentation is not None:
+        publication.is_presentation = publication_data.is_presentation
     if publication_data.doi is not None:
         publication.doi = publication_data.doi
+    if publication_data.order is not None:
+        publication.order = publication_data.order
 
     
     publication.updated_at = datetime.now(timezone.utc)
@@ -458,5 +470,80 @@ async def delete_image(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.put("/reorder/{publication_id}")
+async def reorder_feature_publication(
+    publication_id: int,
+    request: ReorderFeaturePublicationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Reorder a feature publication (Authenticated users only)
+    """
+    publication = db.query(FeaturePublication).filter(
+        FeaturePublication.id == publication_id,
+        FeaturePublication.is_deleted == False
+    ).first()
+    
+    if not publication:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feature publication not found"
+        )
+    
+    # Get all siblings (all non-deleted feature publications)
+    siblings = db.query(FeaturePublication).filter(
+        FeaturePublication.is_deleted == False,
+        FeaturePublication.id != publication_id
+    ).order_by(FeaturePublication.order).all()
+    
+    max_order = len(siblings) + 1
+    
+    if request.order <= 0 or request.order > max_order:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Order must be between 1 and {max_order}"
+        )
+    
+    if request.order == publication.order:
+        return {"message": "Feature publication is already at the desired order"}
+    
+    try:
+        if request.order > publication.order:
+            # Moving forward - decrease order of items between old and new position
+            affected_items = db.query(FeaturePublication).filter(
+                FeaturePublication.is_deleted == False,
+                FeaturePublication.id != publication_id,
+                FeaturePublication.order > publication.order,
+                FeaturePublication.order <= request.order
+            ).order_by(FeaturePublication.order).all()
+            
+            for item in affected_items:
+                item.order -= 1
+        else:
+            # Moving backward - increase order of items between new and old position
+            affected_items = db.query(FeaturePublication).filter(
+                FeaturePublication.is_deleted == False,
+                FeaturePublication.id != publication_id,
+                FeaturePublication.order >= request.order,
+                FeaturePublication.order < publication.order
+            ).order_by(FeaturePublication.order).all()
+            
+            for item in affected_items:
+                item.order += 1
+        
+        publication.order = request.order
+        
+        db.commit()
+        return {"message": "Feature publication reordered successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )

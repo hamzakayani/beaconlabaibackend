@@ -12,6 +12,7 @@ from sqlalchemy import and_
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
 from app.core.config import settings
+from app.schemas.news import ReorderNewsRequest
 
 
 router = APIRouter()
@@ -23,6 +24,7 @@ async def create_news(
     hyperlink: str | None = Form(None),
     publish_date: datetime = Form(...),
     file: Optional[UploadFile] = File(None),
+    order: int = Form(1),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):
@@ -48,6 +50,7 @@ async def create_news(
             hyperlink=hyperlink,
             publish_date=publish_date,
             image_url="",  # Will be updated after file upload
+            order=order
         )
         
         db.add(news)
@@ -101,6 +104,7 @@ async def create_news(
             hyperlink=hyperlink,
             publish_date=publish_date,
             image_url="",
+            order=order
         )
         
         db.add(news)
@@ -117,6 +121,7 @@ async def update_news(
     hyperlink: Optional[str] = Form(None),
     publish_date: Optional[datetime] = Form(None),
     file: Optional[UploadFile] = File(None),
+    order: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):
@@ -198,7 +203,8 @@ async def update_news(
         news.hyperlink = hyperlink
     if publish_date is not None:
         news.publish_date = publish_date
-    
+    if order is not None:
+        news.order = order
     news.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(news)
@@ -273,5 +279,80 @@ async def get_all_news(
     return PaginatedResponse(
         items=items, 
         page_info=page_info
+        )
+
+
+@router.put("/reorder/{news_id}")
+async def reorder_news(
+    news_id: int,
+    request: ReorderNewsRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """
+    Reorder a news item (admin only)
+    """
+    news = db.query(News).filter(
+        News.id == news_id,
+        News.is_deleted == False
+    ).first()
+    
+    if not news:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="News not found"
+        )
+    
+    # Get all siblings (all non-deleted news items)
+    siblings = db.query(News).filter(
+        News.is_deleted == False,
+        News.id != news_id
+    ).order_by(News.order).all()
+    
+    max_order = len(siblings) + 1
+    
+    if request.order <= 0 or request.order > max_order:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Order must be between 1 and {max_order}"
+        )
+    
+    if request.order == news.order:
+        return {"message": "News is already at the desired order"}
+    
+    try:
+        if request.order > news.order:
+            # Moving forward - decrease order of items between old and new position
+            affected_items = db.query(News).filter(
+                News.is_deleted == False,
+                News.id != news_id,
+                News.order > news.order,
+                News.order <= request.order
+            ).order_by(News.order).all()
+            
+            for item in affected_items:
+                item.order -= 1
+        else:
+            # Moving backward - increase order of items between new and old position
+            affected_items = db.query(News).filter(
+                News.is_deleted == False,
+                News.id != news_id,
+                News.order >= request.order,
+                News.order < news.order
+            ).order_by(News.order).all()
+            
+            for item in affected_items:
+                item.order += 1
+        
+        news.order = request.order
+        
+        db.commit()
+        return {"message": "News reordered successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
 

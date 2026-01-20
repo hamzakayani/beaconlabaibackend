@@ -4,6 +4,9 @@ from typing import Optional
 from enum import Enum
 from app.schemas.pagination import PaginatedResponse, PageInfo
 
+class ReorderTeamMemberRequest(BaseModel):
+    order: int
+
 class TeamCategory(str, Enum):
     LAB_DIRECTOR = "lab director"
     COLLABORATIONS = "collaborations"
@@ -12,6 +15,7 @@ class TeamCategory(str, Enum):
     CLINICAL_RESIDENT_AND_FELLOWS = "clinical resident and fellows"
     GRADUATE_AND_UNDERGRADUATE_STUDENTS = "graduate and undergraduate students"
     MEDICAL_STUDENTS = "medical students"
+    VISITING_STUDENTS = "visiting students"
 
 # # Request Schemas
 # class TeamMemberCreate(BaseModel):
@@ -23,14 +27,14 @@ class TeamCategory(str, Enum):
 #     image_url: Optional[str] = Field(None, max_length=255)
 #     hyperlink: Optional[str] = Field(None, max_length=255)
 
-class TeamMemberUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=50)
-    category: Optional[TeamCategory] = None
-    role: Optional[str] = Field(None, min_length=1, max_length=50)
-    designation: Optional[str] = Field(None, min_length=1, max_length=50)
-    description: Optional[str] = Field(None, min_length=1)
-    image_url: Optional[str] = Field(None, max_length=255)
-    hyperlink: Optional[str] = Field(None, max_length=255)
+# class TeamMemberUpdate(BaseModel):
+#     name: Optional[str] = Field(None, min_length=1, max_length=50)
+#     category: Optional[TeamCategory] = None
+#     role: Optional[str] = Field(None, min_length=1, max_length=50)
+#     designation: Optional[str] = Field(None, min_length=1, max_length=50)
+#     description: Optional[str] = Field(None, min_length=1)
+#     image_url: Optional[str] = Field(None, max_length=255)
+#     hyperlink: Optional[str] = Field(None, max_length=255)
 
 # Response Schemas
 class TeamMemberResponse(BaseModel):
@@ -42,6 +46,7 @@ class TeamMemberResponse(BaseModel):
     description: str
     image_url: str
     hyperlink: str
+    order: int
 
     class Config:
         from_attributes = True

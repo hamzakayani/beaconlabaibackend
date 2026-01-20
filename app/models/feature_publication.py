@@ -19,6 +19,8 @@ class FeaturePublication(Base):
     pubmed_id = Column(String(100), default="", index=True)
     nct_number = Column(String(50), default="",index=True)
     doi = Column(String(100), default="", index=True)
+    is_presentation = Column(Boolean, default=False,index=True)
+    order = Column(Integer, nullable=False, default=1, index=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)

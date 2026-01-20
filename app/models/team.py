@@ -16,6 +16,7 @@ class TeamMember(Base):
     description = Column(Text, nullable=False,default="")
     image_url = Column(String(255), nullable=False,default="")
     hyperlink = Column(String(255), nullable=False,default="")
+    order = Column(Integer, nullable=False, default=1, index=True)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)

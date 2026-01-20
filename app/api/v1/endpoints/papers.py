@@ -2,7 +2,7 @@
 from math import ceil
 from app.models.papers import Paper
 from app.schemas.pagination import PageInfo, PaginatedResponse
-from app.schemas.papers import DOIPaperCreate, ManualPaperCreate, PaperResponse, PaperUpdate, PubmedPaperCreate
+from app.schemas.papers import DOIPaperCreate, ManualPaperCreate, PaperResponse, PaperUpdate, PubmedPaperCreate, ReorderPaperRequest
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -47,7 +47,9 @@ async def add_paper_by_doi(
             abstract = res[0]['abstract'],
             publish_date = publish_date2,
             authers = comma_separated_authors,
-            journal = res[0]['journal']
+            journal = res[0]['journal'],
+            category = paper.category.value if paper.category else None,
+            order = paper.order
         )
 
         db.add(db_paper)
@@ -86,7 +88,9 @@ async def add_paper_by_pubmed_id(
             title = result['result'][result['result']['uids'][0]]['title'],
             abstract = result['result'][result['result']['uids'][0]]['abstract'],
             publish_date = publish_date2,
-            authers = authers2
+            authers = authers2,
+            category = paper.category.value if paper.category else None,
+            order = paper.order
         )
 
         db.add(db_paper)
@@ -125,7 +129,9 @@ async def add_paper_manual(
             publish_date=paper_data.publish_date,
             pubmed_id=paper_data.pubmed_id,
             nct_number=paper_data.nct_number,
-            doi=paper_data.doi
+            doi=paper_data.doi,
+            category=paper_data.category.value if paper_data.category else None,
+            order=paper_data.order
         )
 
         db.add(db_paper)
@@ -174,6 +180,10 @@ async def update_paper(
             paper.nct_number = paper_data.nct_number
         if paper_data.doi is not None:
             paper.doi = paper_data.doi
+        if paper_data.category is not None:
+            paper.category = paper_data.category.value
+        if paper_data.order is not None:
+            paper.order = paper_data.order
         db.commit()
         return {"message": "The paper has been successfully updated."}
     except Exception as e:
@@ -243,6 +253,81 @@ async def delete_paper(
         paper.is_deleted = True
         db.commit()
         return {"message": "The paper has been successfully deleted from the system."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.put("/reorder/{paper_id}")
+async def reorder_paper(
+    paper_id: int,
+    request: ReorderPaperRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Reorder a paper (Authenticated users only)
+    """
+    paper = db.query(Paper).filter(
+        Paper.id == paper_id,
+        Paper.is_deleted == False
+    ).first()
+    
+    if not paper:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Paper not found"
+        )
+    
+    # Get all siblings (all non-deleted papers)
+    siblings = db.query(Paper).filter(
+        Paper.is_deleted == False,
+        Paper.id != paper_id
+    ).order_by(Paper.order).all()
+    
+    max_order = len(siblings) + 1
+    
+    if request.order <= 0 or request.order > max_order:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Order must be between 1 and {max_order}"
+        )
+    
+    if request.order == paper.order:
+        return {"message": "Paper is already at the desired order"}
+    
+    try:
+        if request.order > paper.order:
+            # Moving forward - decrease order of items between old and new position
+            affected_items = db.query(Paper).filter(
+                Paper.is_deleted == False,
+                Paper.id != paper_id,
+                Paper.order > paper.order,
+                Paper.order <= request.order
+            ).order_by(Paper.order).all()
+            
+            for item in affected_items:
+                item.order -= 1
+        else:
+            # Moving backward - increase order of items between new and old position
+            affected_items = db.query(Paper).filter(
+                Paper.is_deleted == False,
+                Paper.id != paper_id,
+                Paper.order >= request.order,
+                Paper.order < paper.order
+            ).order_by(Paper.order).all()
+            
+            for item in affected_items:
+                item.order += 1
+        
+        paper.order = request.order
+        
+        db.commit()
+        return {"message": "Paper reordered successfully"}
+        
     except Exception as e:
         db.rollback()
         raise HTTPException(

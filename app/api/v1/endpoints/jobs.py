@@ -16,9 +16,9 @@ from app.schemas.jobs import (
     JobCreate,
     JobUpdate,
     JobResponse,
-    JobApplicationCreate,
     JobApplicationResponse,
-    JobStatusEnum
+    JobStatusEnum,
+    ReorderJobRequest
 )
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
@@ -40,7 +40,13 @@ async def create_job(
         job_type=job_data.job_type,
         location=job_data.location,
         description=job_data.description,
-        status=job_data.status
+        status=job_data.status,
+        funded_by=job_data.funded_by,
+        visa_type=job_data.visa_type,
+        job_tenure=job_data.job_tenure,
+        required_qualifications=job_data.required_qualifications,
+        preferred_qualifications=job_data.preferred_qualifications,
+        order=job_data.order
     )
     
     db.add(job)
@@ -53,7 +59,7 @@ async def create_job(
 async def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    status_filter: Optional[JobStatusEnum] = Query(None, description="Filter by job status"),
+    status_filter: Optional[JobStatusEnum] = Query(JobStatusEnum.open, description="Filter by job status"),
     db: Session = Depends(get_db)
 ):
     """
@@ -61,21 +67,15 @@ async def list_jobs(
     Returns only jobs with status='open' and is_deleted=False.
     """
     query = db.query(Job).filter(
-        and_(
-            Job.is_deleted == False,
-            Job.status == JobStatusEnum.open
-        )
+        Job.is_deleted == False
     )
-    
-    # Apply status filter if provided (for admin use, but keeping it flexible)
+
     if status_filter:
         query = query.filter(Job.status == status_filter)
-    
-    # Get total count
+
     total_items = query.count()
     total_pages = ceil(total_items / size) if total_items > 0 else 0
-    
-    # Apply pagination
+
     items = query.order_by(Job.created_at.desc()).offset((page - 1) * size).limit(size).all()
     
     page_info = PageInfo(
@@ -150,7 +150,18 @@ async def update_job(
         job.description = job_data.description
     if job_data.status is not None:
         job.status = job_data.status
-    
+    if job_data.funded_by is not None:
+        job.funded_by = job_data.funded_by
+    if job_data.visa_type is not None:
+        job.visa_type = job_data.visa_type
+    if job_data.job_tenure is not None:
+        job.job_tenure = job_data.job_tenure
+    if job_data.required_qualifications is not None:
+        job.required_qualifications = job_data.required_qualifications
+    if job_data.preferred_qualifications is not None:
+        job.preferred_qualifications = job_data.preferred_qualifications
+    if job_data.order is not None:
+        job.order = job_data.order
     
     job.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -329,4 +340,79 @@ async def list_job_applications(
     )
     
     return PaginatedResponse(items=items, page_info=page_info)
+
+
+@router.put("/reorder/{job_id}")
+async def reorder_job(
+    job_id: int,
+    request: ReorderJobRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """
+    Reorder a job (admin only)
+    """
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.is_deleted == False
+    ).first()
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    
+    # Get all siblings (all non-deleted jobs)
+    siblings = db.query(Job).filter(
+        Job.is_deleted == False,
+        Job.id != job_id
+    ).order_by(Job.order).all()
+    
+    max_order = len(siblings) + 1
+    
+    if request.order <= 0 or request.order > max_order:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Order must be between 1 and {max_order}"
+        )
+    
+    if request.order == job.order:
+        return {"message": "Job is already at the desired order"}
+    
+    try:
+        if request.order > job.order:
+            # Moving forward - decrease order of items between old and new position
+            affected_items = db.query(Job).filter(
+                Job.is_deleted == False,
+                Job.id != job_id,
+                Job.order > job.order,
+                Job.order <= request.order
+            ).order_by(Job.order).all()
+            
+            for item in affected_items:
+                item.order -= 1
+        else:
+            # Moving backward - increase order of items between new and old position
+            affected_items = db.query(Job).filter(
+                Job.is_deleted == False,
+                Job.id != job_id,
+                Job.order >= request.order,
+                Job.order < job.order
+            ).order_by(Job.order).all()
+            
+            for item in affected_items:
+                item.order += 1
+        
+        job.order = request.order
+        
+        db.commit()
+        return {"message": "Job reordered successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
