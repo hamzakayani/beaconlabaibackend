@@ -60,7 +60,7 @@ async def create_job(
 async def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    status_filter: Optional[JobStatusEnum] = Query(JobStatusEnum.open, description="Filter by job status"),
+    #status_filter: Optional[JobStatusEnum] = Query(JobStatusEnum.open, description="Filter by job status"),
     db: Session = Depends(get_db)
 ):
     """
@@ -68,11 +68,12 @@ async def list_jobs(
     Returns only jobs with status='open' and is_deleted=False.
     """
     query = db.query(Job).filter(
-        Job.is_deleted == False
+        Job.is_deleted == False,
+        Job.status != JobStatusEnum.draft
     )
 
-    if status_filter:
-        query = query.filter(Job.status == status_filter)
+    # if status_filter:
+    #     query = query.filter(Job.status == status_filter)
 
     total_items = query.count()
     total_pages = ceil(total_items / size) if total_items > 0 else 0

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from enum import Enum
 from pydantic import BaseModel
 
@@ -14,13 +14,13 @@ class Category(str, Enum):
 class DOIPaperCreate(BaseModel):
     doi: str
     nct_number: Optional[str] = None
-    category: Optional[Category] = None
+    category: Optional[List[Category]] = None
     order: int = 1
 
 class PubmedPaperCreate(BaseModel):
     pm_id: str 
     nct_number: Optional[str] = None
-    category: Optional[Category] = None
+    category: Optional[List[Category]] = None
     order: int = 1
 
 class ManualPaperCreate(BaseModel):
@@ -32,7 +32,7 @@ class ManualPaperCreate(BaseModel):
     pubmed_id: Optional[str] = None
     nct_number: Optional[str] = None
     doi: Optional[str] = None
-    category: Optional[Category] = None
+    category: Optional[List[Category]] = None
     order: int = 1
 
 class PaperUpdate(BaseModel):
@@ -44,7 +44,7 @@ class PaperUpdate(BaseModel):
     pubmed_id: Optional[str] = None
     nct_number: Optional[str] = None
     doi: Optional[str] = None
-    category: Optional[Category] = None
+    category: Optional[List[Category]] = None
     order: Optional[int] = None
 
 
@@ -59,7 +59,7 @@ class PaperResponse(BaseModel):
     nct_number: str
     tags: dict
     doi: str
-    category: Optional[str] = None
+    category: Optional[List[Category]] = None
     order: int
 
     class Config:
