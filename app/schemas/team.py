@@ -15,28 +15,9 @@ class TeamCategory(str, Enum):
     CLINICAL_RESIDENT_AND_FELLOWS = "clinical resident and fellows"
     GRADUATE_AND_UNDERGRADUATE_STUDENTS = "graduate and undergraduate students"
     MEDICAL_STUDENTS = "medical students"
-    VISITING_STUDENTS = "visiting students"
+    VISITING_STUDENTS_AND_FELLOWS = "visiting student and fellows"
+    RESEARCH_TRAINEE_AND_FELLOWS = "research trainee and fellows"
 
-# # Request Schemas
-# class TeamMemberCreate(BaseModel):
-#     name: str = Field(..., min_length=1, max_length=50)
-#     category: TeamCategory
-#     role: str = Field(..., min_length=1, max_length=50)
-#     designation: str = Field(..., min_length=1, max_length=50)
-#     description: Optional[str] = Field(None, min_length=1)
-#     image_url: Optional[str] = Field(None, max_length=255)
-#     hyperlink: Optional[str] = Field(None, max_length=255)
-
-# class TeamMemberUpdate(BaseModel):
-#     name: Optional[str] = Field(None, min_length=1, max_length=50)
-#     category: Optional[TeamCategory] = None
-#     role: Optional[str] = Field(None, min_length=1, max_length=50)
-#     designation: Optional[str] = Field(None, min_length=1, max_length=50)
-#     description: Optional[str] = Field(None, min_length=1)
-#     image_url: Optional[str] = Field(None, max_length=255)
-#     hyperlink: Optional[str] = Field(None, max_length=255)
-
-# Response Schemas
 class TeamMemberResponse(BaseModel):
     id: int
     name: str
