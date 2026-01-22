@@ -50,6 +50,7 @@ async def add_paper_by_doi(
             authers = comma_separated_authors,
             journal = res[0]['journal'],
             category = [cat.value for cat in paper.category] if paper.category else [],
+            is_presentation = paper.is_presentation,
             order = paper.order
         )
 
@@ -91,6 +92,7 @@ async def add_paper_by_pubmed_id(
             publish_date = publish_date2,
             authers = authers2,
             category = [cat.value for cat in paper.category] if paper.category else [],
+            is_presentation = paper.is_presentation,
             order = paper.order
         )
 
@@ -132,6 +134,7 @@ async def add_paper_manual(
             nct_number=paper_data.nct_number,
             doi=paper_data.doi,
             category=[cat.value for cat in paper_data.category] if paper_data.category else [],
+            is_presentation=paper_data.is_presentation,
             order=paper_data.order
         )
 
@@ -192,6 +195,8 @@ async def update_paper(
             paper.doi = paper_data.doi
         if paper_data.category is not None:
             paper.category = [cat.value for cat in paper_data.category] 
+        if paper_data.is_presentation is not None:
+            paper.is_presentation = paper_data.is_presentation
         # Note: order is handled by reorder_item service below
 
         # If order changed, perform reordering

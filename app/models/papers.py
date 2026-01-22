@@ -22,6 +22,7 @@ class Paper(Base):
     doi = Column(String(100), default="", index=True)
     category = Column(JSON, default = lambda:[])
     order = Column(Integer, nullable=False, default=1, index=True)
+    is_presentation = Column(Boolean, default=False,index=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
