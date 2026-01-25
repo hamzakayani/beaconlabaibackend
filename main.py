@@ -30,12 +30,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def make_serializable(obj):
+    """Recursively convert exception objects to strings for JSON serialization."""
+    if isinstance(obj, Exception):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: make_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [make_serializable(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(make_serializable(item) for item in obj)
+    return obj
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     logger.error(f"Request validation error: {exc}")
+    errors = exc.errors()
+    serializable_errors = make_serializable(errors)
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": exc.body},
+        content={"detail": serializable_errors, "body": exc.body},
     )
 
 from app.core.config import settings

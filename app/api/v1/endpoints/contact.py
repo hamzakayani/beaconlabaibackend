@@ -12,7 +12,7 @@ from app.schemas.contact import (
     ContactInquiryResponse,
     ContactInquiryUpdate,
     ContactInquiryListResponse,
-    ContactInfoResponse
+    ContactInfoResponse,
 )
 from app.schemas.pagination import PaginationParams, PageInfo
 from app.services.auth import get_current_admin
@@ -49,14 +49,15 @@ async def submit_contact_form(
         db.refresh(contact_inquiry)
         
         # Send email notification to admin in background (non-blocking)
+        # Convert None values to placeholder strings to avoid "None" in email
         background_tasks.add_task(
             send_contact_inquiry_notification,
             first_name=contact_data.first_name,
             last_name=contact_data.last_name,
-            email=contact_data.email,
-            phone_number=contact_data.phone_number,
+            email=contact_data.email or "Not provided",
+            phone_number=contact_data.phone_number or "Not provided",
             subject=contact_data.subject.value,
-            message=contact_data.message
+            message=contact_data.message or "No message provided"
         )
         
         return {
@@ -131,6 +132,7 @@ async def get_all_inquiries(
         )
     
     except Exception as e:
+        db.rollback()
         logger.error(f"Error fetching inquiries: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -161,7 +163,7 @@ async def get_inquiry(
     
     return ContactInquiryResponse.model_validate(inquiry)
 
-@router.put("/inquiries/{inquiry_id}", response_model=ContactInquiryResponse)
+@router.put("/inquiries/{inquiry_id}")
 async def update_inquiry(
     inquiry_id: int,
     inquiry_data: ContactInquiryUpdate,
@@ -172,11 +174,9 @@ async def update_inquiry(
     Update a contact inquiry (Admin only)
     """
     inquiry = db.query(ContactInquiry).filter(
-        and_(
             ContactInquiry.id == inquiry_id,
             ContactInquiry.is_deleted == False
-        )
-    ).first()
+            ).first()
     
     if not inquiry:
         raise HTTPException(
@@ -194,8 +194,10 @@ async def update_inquiry(
         db.commit()
         db.refresh(inquiry)
         
-        return ContactInquiryResponse.model_validate(inquiry)
-    
+        return {
+            "message": "The inquiry has been successfully updated."
+        }
+
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating inquiry: {str(e)}")
@@ -204,7 +206,7 @@ async def update_inquiry(
             detail="Failed to update inquiry"
         )
 
-@router.delete("/inquiries/{inquiry_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/inquiries/{inquiry_id}")
 async def delete_inquiry(
     inquiry_id: int,
     db: Session = Depends(get_db),
@@ -214,10 +216,8 @@ async def delete_inquiry(
     Soft delete a contact inquiry (Admin only)
     """
     inquiry = db.query(ContactInquiry).filter(
-        and_(
             ContactInquiry.id == inquiry_id,
             ContactInquiry.is_deleted == False
-        )
     ).first()
     
     if not inquiry:
@@ -232,7 +232,9 @@ async def delete_inquiry(
         inquiry.deleted_at = datetime.now(timezone.utc)
         db.commit()
         
-        return None
+        return {
+            "message": "The inquiry has been successfully deleted."
+        }
     
     except Exception as e:
         db.rollback()
