@@ -4,7 +4,7 @@ alembic/versions/
 .env
 *.db
 images/
-*.pyc
 __pycache__/
+*.pyc
 logs/
 cv_uploads/
