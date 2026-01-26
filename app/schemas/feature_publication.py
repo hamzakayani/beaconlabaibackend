@@ -2,22 +2,21 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-class ReorderFeaturePublicationRequest(BaseModel):
-    order: int
-
-# Request Schemas
-
 class DOIFeaturePublicationCreate(BaseModel):
     doi: str
     nct_number: Optional[str] = None
     is_presentation: bool= False
     order: int = 1
+    is_open: bool = False
+    image_url: Optional[str] = None
 
 class PubmedFeaturePublicationCreate(BaseModel):
     pm_id: str 
     nct_number: Optional[str] = None
     is_presentation: bool= False
     order: int = 1
+    is_open: bool = False
+    image_url: Optional[str] = None
 class ManualFeaturePublicationCreate(BaseModel):
     title: str
     abstract: Optional[str] 
@@ -29,7 +28,8 @@ class ManualFeaturePublicationCreate(BaseModel):
     doi: Optional[str] 
     is_presentation: bool= False
     order: int = 1
-
+    is_open: bool = False
+    image_url: Optional[str] = None
 class FeaturePublicationUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1)
     abstract: Optional[str] = None
@@ -41,11 +41,11 @@ class FeaturePublicationUpdate(BaseModel):
     doi: Optional[str] = None
     is_presentation: Optional[bool] = None
     order: Optional[int] = None
-
+    is_open: Optional[bool] = None  
+    image_url: Optional[str] = None 
 # Response Schema
 class FeaturePublicationResponse(BaseModel):
     id: int
-    image_url: Optional[str] = None
     title: str
     abstract: str
     authers: str
@@ -56,9 +56,10 @@ class FeaturePublicationResponse(BaseModel):
     doi: str
     is_presentation: bool
     order: int
+    is_open: bool
     created_at: datetime
     updated_at: datetime
     is_deleted: bool
-
+    image_url: Optional[str] = None
     class Config:
         from_attributes = True

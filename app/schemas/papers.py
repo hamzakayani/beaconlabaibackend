@@ -17,13 +17,14 @@ class DOIPaperCreate(BaseModel):
     category: Optional[List[Category]] = None
     is_presentation: Optional[bool] = False
     order: int = 1
-
+    is_open: bool = False
 class PubmedPaperCreate(BaseModel):
     pm_id: str 
     nct_number: Optional[str] = None
     category: Optional[List[Category]] = None
     is_presentation: Optional[bool] = False
     order: int = 1
+    is_open: bool = False
 
 class ManualPaperCreate(BaseModel):
     title: str
@@ -37,7 +38,7 @@ class ManualPaperCreate(BaseModel):
     category: Optional[List[Category]] = None
     is_presentation: Optional[bool] = False
     order: int = 1
-
+    is_open: bool = False
 class PaperUpdate(BaseModel):
     title: Optional[str] = None
     abstract: Optional[str] = None
@@ -50,7 +51,7 @@ class PaperUpdate(BaseModel):
     category: Optional[List[Category]] = None
     order: Optional[int] = None
     is_presentation: Optional[bool] = None
-
+    is_open: Optional[bool] = None
 class PaperResponse(BaseModel):
     id: int
     title: str
@@ -65,5 +66,6 @@ class PaperResponse(BaseModel):
     category: Optional[List[Category]] = None
     order: int
     is_presentation: bool
+    is_open: bool
     class Config:
         from_attributes = True

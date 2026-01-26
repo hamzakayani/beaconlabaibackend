@@ -3,7 +3,8 @@ from typing import Optional
 from math import ceil
 from pathlib import Path
 import os
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from app.services.image_upload import upload_image
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File,Form
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.db.database import get_db
@@ -13,8 +14,7 @@ from app.schemas.feature_publication import (
     ManualFeaturePublicationCreate,
     FeaturePublicationUpdate,
     FeaturePublicationResponse,
-    PubmedFeaturePublicationCreate,
-    ReorderFeaturePublicationRequest,
+    PubmedFeaturePublicationCreate
 )
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_active_user
@@ -52,7 +52,9 @@ async def add_feature_publication_manual(
             nct_number=publication_data.nct_number,
             doi=publication_data.doi,
             is_presentation=publication_data.is_presentation,
-            order=publication_data.order
+            order=publication_data.order,
+            is_open=publication_data.is_open,
+            image_url=publication_data.image_url if publication_data.image_url else None,
         )
 
         db.add(feature_publication)
@@ -60,8 +62,7 @@ async def add_feature_publication_manual(
         db.refresh(feature_publication)
 
         return {
-            "message": "Feature publication added successfully",
-            "publication_id": feature_publication.id
+            "message": "Feature publication added successfully"
         }
 
     except Exception as e:
@@ -112,7 +113,9 @@ async def add_feature_publication_by_doi(
             journal=res[0]['journal'],
             doi=paper.doi,
             is_presentation=paper.is_presentation,
-            order=paper.order
+            order=paper.order,
+            is_open=paper.is_open,
+            image_url=paper.image_url if paper.image_url else None,
         )
 
         db.add(db_publication)
@@ -121,7 +124,6 @@ async def add_feature_publication_by_doi(
 
         return {
             "message": "Feature publication has been successfully added to the system.",
-            "publication_id": db_publication.id
         }
 
     except HTTPException:
@@ -164,7 +166,9 @@ async def add_feature_publication_by_pubmed_id(
             authers=authers2,
             pubmed_id=paper.pm_id,
             is_presentation=paper.is_presentation,
-            order=paper.order
+            order=paper.order,
+            is_open=paper.is_open,
+            image_url=paper.image_url if paper.image_url else None,
         )
 
         db.add(db_publication)
@@ -173,7 +177,6 @@ async def add_feature_publication_by_pubmed_id(
 
         return {
             "message": "Feature publication has been successfully added to the system.",
-            "publication_id": db_publication.id
         }
 
     except HTTPException:
@@ -312,6 +315,10 @@ async def update_feature_publication(
         publication.is_presentation = publication_data.is_presentation
     if publication_data.doi is not None:
         publication.doi = publication_data.doi
+    if publication_data.is_open is not None:
+        publication.is_open = publication_data.is_open
+    if publication_data.image_url is not None:
+        publication.image_url = publication_data.image_url
     # Note: order is handled by reorder_item service below
 
     # If order changed, perform reordering
@@ -332,8 +339,7 @@ async def update_feature_publication(
     db.refresh(publication)
     
     return {
-        "message": "Feature publication updated successfully",
-        # "publication": publication
+        "message": "Feature publication updated successfully"
     }
 
 
@@ -365,81 +371,6 @@ async def delete_feature_publication(
     return {
         "message": "Feature publication deleted successfully"
     }
-
-
-@router.post("/{publication_id}/upload_image")
-async def upload_image(
-    publication_id: int,
-    file: UploadFile = File(...),
-    old_image_path: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    Upload an image for a feature publication (Authenticated users only)
-    """
-    publication = db.query(FeaturePublication).filter(
-        and_(
-            FeaturePublication.id == publication_id,
-            FeaturePublication.is_deleted == False
-        )
-    ).first()
-    
-    if not publication:
-        raise HTTPException(status_code=404, detail="Feature publication not found")
-    
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only images are allowed"
-        )
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"feature_publication_{publication_id}_{timestamp}{file_ext}"
-    file_path = settings.IMAGES_UPLOAD_DIR / filename
-    
-    try:
-        contents = await file.read()
-        
-        if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File is too large to upload."
-            )
-        
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        
-        # Delete old image if provided
-        if old_image_path:
-            old_file = Path(old_image_path)
-            if old_file.exists():
-                try:
-                    old_file.unlink()
-                except Exception:
-                    pass
-        
-        # Update feature publication image_url
-        publication.image_url = f"/images/{filename}"
-        publication.updated_at = datetime.now(timezone.utc)
-        db.add(publication)
-        db.commit()
-        db.refresh(publication)
-        
-        return {
-            "message": "Image uploaded successfully",
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        if file_path.exists():
-            file_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
 
 
 @router.delete("/{publication_id}/delete_image")
@@ -492,27 +423,3 @@ async def delete_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
-
-# @router.put("/reorder/{publication_id}")
-# async def reorder_feature_publication(
-#     publication_id: int,
-#     request: ReorderFeaturePublicationRequest,
-#     db: Session = Depends(get_db),
-#     current_user: User = Depends(get_current_active_user)
-# ):
-#     """
-#     Reorder a feature publication (Authenticated users only)
-#     """
-#     try:
-#         reorder_item(db, FeaturePublication, publication_id, request.order)
-#         db.commit()
-#         return {"message": "Feature publication reordered successfully"}
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         db.rollback()
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail=str(e)
-#         )

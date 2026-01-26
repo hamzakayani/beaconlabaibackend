@@ -14,7 +14,7 @@ class TeamMember(Base):
     role = Column(String(50), nullable=False,default="")
     designation = Column(String(50), nullable=False,default="")
     description = Column(Text, nullable=False,default="")
-    image_url = Column(String(255), nullable=False,default="")
+    image_url = Column(String(255), nullable=True,default=None)
     hyperlink = Column(String(255), nullable=False,default="")
     order = Column(Integer, nullable=False, default=1, index=True)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)

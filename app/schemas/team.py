@@ -25,8 +25,8 @@ class TeamMemberResponse(BaseModel):
     role: str
     designation: str
     description: str
-    image_url: str
-    hyperlink: str
+    image_url: Optional[str] = None
+    hyperlink: Optional[str] = None
     order: int
 
     class Config:

@@ -1,19 +1,14 @@
 from datetime import datetime, timezone
 from typing import Optional
 from math import ceil
-from pathlib import Path
-import os
 from app.models.news import News
-from app.schemas.news import NewsCreate, NewsResponse, NewsUpdate
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from app.schemas.news import NewsResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Form
 from sqlalchemy.orm import Session
-from app.db.database import get_db
-from sqlalchemy import and_
+from app.db.database import get_db  
 from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
 from app.services.reorder import reorder_item
-from app.core.config import settings
-from app.schemas.news import ReorderNewsRequest
 
 
 router = APIRouter()
@@ -24,94 +19,27 @@ async def create_news(
     content: str = Form(...),
     hyperlink: str | None = Form(None),
     publish_date: datetime = Form(...),
-    file: Optional[UploadFile] = File(None),
+    image_url: Optional[str] = Form(None),
     order: int = Form(1),
+    is_open: bool = Form(False),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):
     """
     Create a new news item with optional image upload
     """
-    image_url = ""
-    file_path = None
-    
-    # Handle image upload if provided
-    if file and file.filename:
-        file_ext = os.path.splitext(file.filename)[1].lower()
-        if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only images are allowed"
-            )
-        
-        # Create news first to get the ID for filename
-        news = News(
-            title=title,
-            content=content,
-            hyperlink=hyperlink,
-            publish_date=publish_date,
-            image_url="",  # Will be updated after file upload
-            order=order
-        )
-        
-        db.add(news)
-        db.commit()
-        db.refresh(news)
-        
-        # Now create filename with news_id
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"news_{news.id}_{timestamp}{file_ext}"
-        file_path = settings.IMAGES_UPLOAD_DIR / filename
-        
-        try:
-            contents = await file.read()
-            
-            if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
-                db.delete(news)
-                db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail="File is too large to upload."
-                )
-            
-            with open(file_path, "wb") as f:
-                f.write(contents)
-            
-            # Update news with image_url
-            image_url = f"/images/{filename}"
-            news.image_url = image_url
-            news.updated_at = datetime.now(timezone.utc)
-            db.commit()
-            db.refresh(news)
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            # Clean up: delete news if file upload fails
-            if news:
-                db.delete(news)
-                db.commit()
-            if file_path and file_path.exists():
-                file_path.unlink()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error uploading image: {str(e)}"
-            )
-    else:
-        # No image provided, create news without image
-        news = News(
-            title=title,
-            content=content,
-            hyperlink=hyperlink,
-            publish_date=publish_date,
-            image_url="",
-            order=order
-        )
-        
-        db.add(news)
-        db.commit()
-        db.refresh(news)
-
+    news = News(
+        title=title,
+        content=content,
+        hyperlink=hyperlink,
+        publish_date=publish_date,
+        image_url=image_url if image_url else None,
+        order=order,
+        is_open=is_open
+    )
+    db.add(news)
+    db.commit()
+    db.refresh(news)
     return {"message": "News created successfully"}
 
 @router.put("/update_news/{news_id}")
@@ -121,7 +49,8 @@ async def update_news(
     content: Optional[str] = Form(None),
     hyperlink: Optional[str] = Form(None),
     publish_date: Optional[datetime] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    image_url: Optional[str] = Form(None),
+    is_open: Optional[bool] = Form(None),
     order: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
@@ -147,62 +76,6 @@ async def update_news(
         order_changed = True
         new_order = order
 
-    old_image_path = None
-    file_path = None
-    
-    # Handle image upload if provided
-    # If no file is provided, skip image handling and preserve existing image_url
-    if file and file.filename:
-        file_ext = os.path.splitext(file.filename)[1].lower()
-        if file_ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only images are allowed"
-            )
-        
-        # Store old image path for deletion
-        if news.image_url:
-            old_image_path = Path(news.image_url)
-        
-        # Create filename with news_id
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"news_{news.id}_{timestamp}{file_ext}"
-        file_path = settings.IMAGES_UPLOAD_DIR / filename
-        
-        try:
-            contents = await file.read()
-            
-            if len(contents) > settings.IMAGE_MAX_FILE_SIZE:
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail="File is too large to upload."
-                )
-            
-            with open(file_path, "wb") as f:
-                f.write(contents)
-            
-            # Update news with new image_url
-            news.image_url = f"/images/{filename}"
-            
-            # Delete old image if it exists
-            if old_image_path and old_image_path.exists():
-                try:
-                    old_image_path.unlink()
-                except Exception as e:
-                    # Log but don't fail if old image deletion fails
-                    pass
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            # Clean up: delete new file if update fails
-            if file_path and file_path.exists():
-                file_path.unlink()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error uploading image: {str(e)}"
-            )
-
     # Update fields if provided
     if title is not None:
         news.title = title
@@ -212,7 +85,10 @@ async def update_news(
         news.hyperlink = hyperlink
     if publish_date is not None:
         news.publish_date = publish_date
-    # Note: order is handled by reorder_item service below
+    if image_url is not None:
+        news.image_url = image_url
+    if is_open is not None:
+        news.is_open = is_open
 
     # If order changed, perform reordering
     if order_changed:
@@ -302,79 +178,4 @@ async def get_all_news(
         items=items, 
         page_info=page_info
         )
-
-
-# @router.put("/reorder/{news_id}")
-# async def reorder_news(
-#     news_id: int,
-#     request: ReorderNewsRequest,
-#     db: Session = Depends(get_db),
-#     current_user = Depends(get_current_admin)
-# ):
-#     """
-#     Reorder a news item (admin only)
-#     """
-#     news = db.query(News).filter(
-#         News.id == news_id,
-#         News.is_deleted == False
-#     ).first()
-    
-#     if not news:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail="News not found"
-#         )
-    
-#     # Get all siblings (all non-deleted news items)
-#     siblings = db.query(News).filter(
-#         News.is_deleted == False,
-#         News.id != news_id
-#     ).order_by(News.order).all()
-    
-#     max_order = len(siblings) + 1
-    
-#     if request.order <= 0 or request.order > max_order:
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail=f"Order must be between 1 and {max_order}"
-#         )
-    
-#     if request.order == news.order:
-#         return {"message": "News is already at the desired order"}
-    
-#     try:
-#         if request.order > news.order:
-#             # Moving forward - decrease order of items between old and new position
-#             affected_items = db.query(News).filter(
-#                 News.is_deleted == False,
-#                 News.id != news_id,
-#                 News.order > news.order,
-#                 News.order <= request.order
-#             ).order_by(News.order).all()
-            
-#             for item in affected_items:
-#                 item.order -= 1
-#         else:
-#             # Moving backward - increase order of items between new and old position
-#             affected_items = db.query(News).filter(
-#                 News.is_deleted == False,
-#                 News.id != news_id,
-#                 News.order >= request.order,
-#                 News.order < news.order
-#             ).order_by(News.order).all()
-            
-#             for item in affected_items:
-#                 item.order += 1
-        
-#         news.order = request.order
-        
-#         db.commit()
-#         return {"message": "News reordered successfully"}
-        
-#     except Exception as e:
-#         db.rollback()
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail=str(e)
-#         )
 
