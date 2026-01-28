@@ -7,6 +7,7 @@ from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.schemas.papers import Category, DOIPaperCreate, ManualPaperCreate, PaperResponse, PaperUpdate, PubmedPaperCreate, ReorderPaperRequest
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
 from app.db.database import get_db
 from app.services.auth import get_current_active_user
 from app.models.user import User
@@ -266,12 +267,19 @@ async def list_all_papers(
         query = db.query(Paper).filter(Paper.is_deleted == False)
         
         # Apply search filter if provided
-        if category and search:
-            query = query.filter(Paper.category.ilike(f"%{category}%") & (Paper.title.ilike(f"%{search}%") | Paper.abstract.ilike(f"%{search}%")))
-        elif category:
-            query = query.filter(Paper.category.ilike(f"%{category}%"))
-        elif search:
-            query = query.filter(Paper.title.ilike(f"%{search}%") | Paper.abstract.ilike(f"%{search}%"))
+        if search:
+            query = query.filter(
+                or_(
+                    Paper.title.ilike(f"%{search}%"),
+                    Paper.abstract.ilike(f"%{search}%")
+                )
+            )
+
+        if category:
+            query = query.filter(
+                func.JSON_CONTAINS(Paper.category, f'"{category.value}"')
+            )
+        
 
         # Order by order field
         query = query.order_by(Paper.order)
