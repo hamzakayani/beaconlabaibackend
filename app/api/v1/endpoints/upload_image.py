@@ -1,6 +1,6 @@
 from math import ceil
-from app.services.image_upload import upload_image
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File,Form
+from app.services.image_upload import upload_image, delete_image
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.pagination import PageInfo, PaginatedResponse
@@ -93,3 +93,16 @@ async def list_all_images(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch images: {str(e)}"
         )
+
+
+@router.delete("/delete_image")
+def delete_image_endpoint(
+    image_path: str = Query(..., description="Path to the image (as returned by list_all_images)"),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Delete an image (authenticated users only).
+    Pass the image path as returned by the list_all_images endpoint.
+    """
+    delete_image(image_path)
+    return {"message": "Image deleted successfully", "image_path": image_path}

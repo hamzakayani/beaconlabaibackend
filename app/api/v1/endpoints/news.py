@@ -160,6 +160,7 @@ async def get_news(
 async def get_all_news(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    search: Optional[str] = Query(None, description="Search by title or content"),
     db: Session = Depends(get_db)
 ):
     """
@@ -167,6 +168,8 @@ async def get_all_news(
     Returns only news with is_deleted=False.
     """
     query = db.query(News).filter(News.is_deleted == False)
+    if search:
+        query = query.filter(News.title.ilike(f"%{search}%") | News.content.ilike(f"%{search}%"))
     
     # Get total count
     total_items = query.count()

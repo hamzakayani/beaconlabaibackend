@@ -59,3 +59,40 @@ async def upload_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+def delete_image(image_path: str) -> None:
+    """
+    Delete an image file. The path must be under IMAGES_UPLOAD_DIR.
+    Accepts the path as returned by list_all_images (relative or absolute).
+    """
+    path = Path(image_path).resolve()
+    upload_dir = settings.IMAGES_UPLOAD_DIR.resolve()
+
+    try:
+        path.relative_to(upload_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image path must be within the upload directory",
+        )
+
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found",
+        )
+
+    if not path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Path is not a file",
+        )
+
+    try:
+        path.unlink()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete image: {str(e)}",
+        )
