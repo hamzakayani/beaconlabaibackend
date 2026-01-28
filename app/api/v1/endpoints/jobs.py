@@ -36,6 +36,11 @@ async def create_job(
     """
     Create a new job posting (admin only).
     """
+    if job_data.order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
     job = Job(
         title=job_data.title,
         job_type=job_data.job_type,
@@ -60,7 +65,7 @@ async def create_job(
 async def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    #status_filter: Optional[JobStatusEnum] = Query(JobStatusEnum.open, description="Filter by job status"),
+    status_filter: Optional[JobStatusEnum] = Query(None, description="Filter by job status"),
     db: Session = Depends(get_db)
 ):
     """
@@ -68,12 +73,11 @@ async def list_jobs(
     Returns only jobs with status='open' and is_deleted=False.
     """
     query = db.query(Job).filter(
-        Job.is_deleted == False,
-        Job.status != JobStatusEnum.draft
+        Job.is_deleted == False
     )
 
-    # if status_filter:
-    #     query = query.filter(Job.status == status_filter)
+    if status_filter:
+        query = query.filter(Job.status == status_filter)
 
     total_items = query.count()
     total_pages = ceil(total_items / size) if total_items > 0 else 0
@@ -101,11 +105,9 @@ async def get_job(
     Get a single job by ID (public endpoint).
     """
     job = db.query(Job).filter(
-        and_(
-            Job.id == job_id,
-            Job.is_deleted == False
-        )
-    ).first()
+        Job.id == job_id,
+        Job.is_deleted == False
+        ).first()
     
     if not job:
         raise HTTPException(
@@ -130,11 +132,9 @@ async def update_job(
     Update a job posting (admin only).
     """
     job = db.query(Job).filter(
-        and_(
-            Job.id == job_id,
-            Job.is_deleted == False
-        )
-    ).first()
+        Job.id == job_id,
+        Job.is_deleted == False
+        ).first()
     
     if not job:
         raise HTTPException(
@@ -145,6 +145,12 @@ async def update_job(
     # Check if order is being updated and needs reordering
     order_changed = False
     new_order = None
+    
+    if job_data.order is not None and job_data.order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
     
     if job_data.order is not None and job_data.order != job.order:
         order_changed = True

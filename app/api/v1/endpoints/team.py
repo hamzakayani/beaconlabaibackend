@@ -47,6 +47,11 @@ async def add_team_member(
             detail=f"Invalid category. Must be one of: {[c.value for c in TeamCategory]}"
         )
 
+    if order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
 
     team_member = TeamMember(
         name=name,
@@ -100,6 +105,12 @@ async def update_team_member(
     order_changed = False
     new_order = None
     
+    if order is not None and order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
+        
     if order is not None and order != team_member.order:
         order_changed = True
         new_order = order

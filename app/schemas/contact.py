@@ -9,38 +9,38 @@ class ContactFormCreate(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     email: Optional[EmailStr] = Field(None, min_length=1, max_length=255)
-    phone_number: Optional[str] = Field(None, min_length=10, max_length=20)
+    phone_number: Optional[str] = Field(None, max_length=20)
     subject: ContactSubjectEnum
-    message: Optional[str] = Field(None, min_length=10, max_length=5000)
+    message: Optional[str] = Field(None, min_length=1, max_length=5000)
 
-    @field_validator('phone_number')
-    @classmethod
-    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        # Remove common phone number formatting characters
-        cleaned = ''.join(filter(str.isdigit, v))
-        if len(cleaned) < 10:
-            raise ValueError('Phone number must contain at least 10 digits')
-        return v
+    # @field_validator('phone_number')
+    # @classmethod
+    # def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+    #     if v is None:
+    #         return v
+    #     # Remove common phone number formatting characters
+    #     cleaned = ''.join(filter(str.isdigit, v))
+    #     if len(cleaned) < 10:
+    #         raise ValueError('Phone number must contain at least 10 digits')
+    #     return v
 
 class ContactInquiryUpdate(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
     email: Optional[EmailStr] = None
-    phone_number: Optional[str] = Field(None, min_length=10, max_length=20)
+    phone_number: Optional[str] = Field(None, max_length=20)
     subject: Optional[ContactSubjectEnum] = None
-    message: Optional[str] = Field(None, min_length=10, max_length=5000)
+    message: Optional[str] = Field(None, min_length=1, max_length=5000)
 
-    @field_validator('phone_number')
-    @classmethod
-    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        cleaned = ''.join(filter(str.isdigit, v))
-        if len(cleaned) < 10:
-            raise ValueError('Phone number must contain at least 10 digits')
-        return v
+    # @field_validator('phone_number')
+    # @classmethod
+    # def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+    #     if v is None:
+    #         return v
+    #     cleaned = ''.join(filter(str.isdigit, v))
+    #     if len(cleaned) < 10:
+    #         raise ValueError('Phone number must contain at least 10 digits')
+    #     return v
 
 # Response Schemas
 class ContactInquiryResponse(BaseModel):

@@ -40,6 +40,11 @@ async def add_feature_publication_manual(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="DOI or PubMED ID is required"
         )
+    if publication_data.order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
 
     try:
         feature_publication = FeaturePublication(
@@ -102,6 +107,12 @@ async def add_feature_publication_by_doi(
         
         comma_separated_authors = res[0]['authors'].replace(';', ',')
         publish_date2 = res[0]['pub_date']
+
+        if paper.order < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Order must be greater than 0"
+            )
         
         # Create new feature publication entry
         db_publication = FeaturePublication(
@@ -156,7 +167,12 @@ async def add_feature_publication_by_pubmed_id(
         paper_data = result['result'][result['result']['uids'][0]]
         publish_date2 = paper_data['date_pub']
         authers2 = ", ".join(author['name'] for author in paper_data['authors'])
-        
+
+        if paper.order < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Order must be greater than 0"
+            )
         # Create new feature publication entry
         db_publication = FeaturePublication(
             nct_number=paper.nct_number,
@@ -291,7 +307,12 @@ async def update_feature_publication(
     # Check if order is being updated and needs reordering
     order_changed = False
     new_order = None
-    
+    if publication_data.order is not None and publication_data.order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
+        
     if publication_data.order is not None and publication_data.order != publication.order:
         order_changed = True
         new_order = publication_data.order

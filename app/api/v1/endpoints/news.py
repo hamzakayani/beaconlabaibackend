@@ -28,6 +28,11 @@ async def create_news(
     """
     Create a new news item with optional image upload
     """
+    if order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
+        )
     news = News(
         title=title,
         content=content,
@@ -66,6 +71,11 @@ async def update_news(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="News not found"
+        )
+    if order is not None and order < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order must be greater than 0"
         )
 
     # Check if order is being updated and needs reordering
