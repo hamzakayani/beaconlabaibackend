@@ -66,6 +66,7 @@ async def create_job(
 async def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    is_public: bool = Query(True, description="Whether to return all (open,closed,draft) jobs or only open and closed jobs"),
     status_filter: Optional[JobStatusEnum] = Query(None, description="Filter by job status"),
     db: Session = Depends(get_db)
 ):
@@ -76,6 +77,12 @@ async def list_jobs(
     query = db.query(Job).filter(
         Job.is_deleted == False
     )
+    
+    if is_public:
+        query = query.filter(Job.status.in_([JobStatusEnum.open, JobStatusEnum.closed]))
+    else:
+        query = query.filter(Job.status.in_([JobStatusEnum.open, JobStatusEnum.closed, JobStatusEnum.draft]))
+
 
     if status_filter:
         query = query.filter(Job.status == status_filter)
