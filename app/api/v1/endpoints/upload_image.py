@@ -31,7 +31,7 @@ async def upload_images(
     
     return {
         "message": "Image uploaded successfully",
-        "image_url": file_path,
+        "image_url": f"/{file_path}",
         "stage": stage
     }
 
@@ -71,7 +71,7 @@ async def list_all_images(
             end_idx = start_idx + size
             paginated_images = all_images[start_idx:end_idx]
             
-            image_list = [str(image_path) for image_path in paginated_images]
+            image_list = [f"/{str(image_path)}" for image_path in paginated_images]
         
         # Create page info
         page_info = PageInfo(

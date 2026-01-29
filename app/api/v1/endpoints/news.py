@@ -78,14 +78,6 @@ async def update_news(
             detail="Order must be greater than 0"
         )
 
-    # Check if order is being updated and needs reordering
-    order_changed = False
-    new_order = None
-    
-    if order is not None and order != news.order:
-        order_changed = True
-        new_order = order
-
     # Update fields if provided
     if title is not None:
         news.title = title
@@ -99,19 +91,8 @@ async def update_news(
         news.image_url = image_url
     if is_open is not None:
         news.is_open = is_open
-
-    # If order changed, perform reordering
-    if order_changed:
-        try:
-            reorder_item(db, News, news_id, new_order)
-        except HTTPException:
-            raise
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to reorder: {str(e)}"
-            )
+    if order is not None:
+        news.order = order
     
     news.updated_at = datetime.now(timezone.utc)
     db.commit()
