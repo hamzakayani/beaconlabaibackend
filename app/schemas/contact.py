@@ -1,10 +1,15 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional
-from app.models.contact_enums import ContactSubjectEnum
 from app.schemas.pagination import PaginatedResponse, PageInfo
+from enum import Enum
 
 # Request Schemas
+class ContactSubjectEnum(str, Enum):
+    GENERAL_QUERY = "General Query"
+    CONTRIBUTING = "Contributing"
+    JOIN_LAB = "Join Lab"
+
 class ContactFormCreate(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)

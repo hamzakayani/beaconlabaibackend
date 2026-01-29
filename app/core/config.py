@@ -11,8 +11,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str
     SMTP_PASSWORD: str
     PAGINATION_SIZE: int = 10
-    # CONTACT_EMAIL: str = "riaz.irbaz@mayo.edu"
-    CONTACT_EMAIL: str = "habzayasin238@gmail.com"
+    CONTACT_EMAIL: str = "riaz.irbaz@mayo.edu"
     CONTACT_ADDRESS: str = "Johnson Medical Research Building, 13400, E shea Blvd, Scottsdale, Arizona, 85259"
     ADMIN_NOTIFICATION_EMAIL: str = ""  # Optional: Set in .env to receive email notifications
     

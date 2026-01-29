@@ -16,7 +16,8 @@ class TeamCategory(str, Enum):
     GRADUATE_AND_UNDERGRADUATE_STUDENTS = "graduate and undergraduate students"
     MEDICAL_STUDENTS = "medical students"
     VISITING_STUDENTS_AND_FELLOWS = "visiting student and fellows"
-    RESEARCH_TRAINEE_AND_FELLOWS = "research trainee and fellows"
+    RESEARCH_TRAINEES = "research trainees"
+    RESEARCH_FELLOWS_AND_ASSOCIATES = "research fellows and associates"
 
 class TeamMemberResponse(BaseModel):
     id: int

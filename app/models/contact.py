@@ -1,6 +1,5 @@
-from sqlalchemy import Boolean, Column, Integer, String, Text, DateTime, Enum
+from sqlalchemy import Boolean, Column, Integer, String, Text, DateTime
 from app.db.database import Base
-from app.models.contact_enums import ContactSubjectEnum
 from datetime import datetime, timezone
 
 def utc_now():
@@ -14,7 +13,7 @@ class ContactInquiry(Base):
     last_name = Column(String(50), nullable=False)
     email = Column(String(100), nullable=True, index=True)
     phone_number = Column(String(20), nullable=True)
-    subject = Column(Enum(ContactSubjectEnum), nullable=False,default="")
+    subject = Column(String(50), nullable=False,default="")
     message = Column(Text, nullable=True,default="")
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime, default=utc_now)

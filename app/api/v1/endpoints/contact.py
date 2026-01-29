@@ -6,13 +6,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.db.database import get_db
 from app.models.contact import ContactInquiry
-from app.models.contact_enums import ContactSubjectEnum
 from app.schemas.contact import (
     ContactFormCreate,
     ContactInquiryResponse,
     ContactInquiryUpdate,
     ContactInquiryListResponse,
     ContactInfoResponse,
+    ContactSubjectEnum
 )
 from app.schemas.pagination import PaginationParams, PageInfo
 from app.services.auth import get_current_admin
@@ -23,7 +23,7 @@ from app.core.logging_config import setup_logging
 logger = setup_logging()
 router = APIRouter()
 
-@router.post("/submit", status_code=status.HTTP_201_CREATED)
+@router.post("/submit")
 async def submit_contact_form(
     contact_data: ContactFormCreate,
     background_tasks: BackgroundTasks,
@@ -43,11 +43,9 @@ async def submit_contact_form(
             subject=contact_data.subject,
             message=contact_data.message
         )
-        
         db.add(contact_inquiry)
         db.commit()
         db.refresh(contact_inquiry)
-        
         # Send email notification to admin in background (non-blocking)
         # Convert None values to placeholder strings to avoid "None" in email
         background_tasks.add_task(
@@ -56,15 +54,15 @@ async def submit_contact_form(
             last_name=contact_data.last_name,
             email=contact_data.email or "Not provided",
             phone_number=contact_data.phone_number or "Not provided",
-            subject=contact_data.subject.value,
+            subject=contact_data.subject,
             message=contact_data.message or "No message provided"
         )
-        
+
         return {
             "message": "Your inquiry has been submitted successfully. We will get back to you soon.",
         }
-    
     except Exception as e:
+        print(e)
         db.rollback()
         logger.error(f"Error submitting contact form: {str(e)}")
         raise HTTPException(
@@ -86,7 +84,7 @@ async def get_contact_info():
 async def get_all_inquiries(
     page: int = Query(1, description="Page number"),
     size: int = Query(10, description="Max number of items to return"),
-    subject: Optional[ContactSubjectEnum] = Query(None),
+    subject: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin)
 ):

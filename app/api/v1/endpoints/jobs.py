@@ -4,7 +4,7 @@ from typing import Optional
 from math import ceil
 import uuid
 from app.core.config import settings
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from email_validator import validate_email, EmailNotValidError
@@ -24,6 +24,7 @@ from app.schemas.pagination import PageInfo, PaginatedResponse
 from app.services.auth import get_current_admin
 from app.services.file_upload import save_cv_file
 from app.services.reorder import reorder_item
+from app.services.email import send_job_application_notification
 
 router = APIRouter()
 
@@ -229,12 +230,13 @@ async def delete_job(
 @router.post("/{job_id}/apply")
 async def apply_to_job(
     job_id: int,
+    background_tasks: BackgroundTasks,
     full_name: str = Form(..., min_length=1, max_length=255),
     email: str = Form(...),
     phone: Optional[str] = Form(None, max_length=50),
     cover_letter: Optional[str] = Form(None),
     cv: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Apply to a job with CV upload (public endpoint).
@@ -308,6 +310,17 @@ async def apply_to_job(
         db.add(application)
         db.commit()
         db.refresh(application)
+
+        # Notify admins in background (same list as contact inquiry)
+        background_tasks.add_task(
+            send_job_application_notification,
+            job_title=job.title,
+            full_name=full_name,
+            email=email,
+            phone=phone,
+            cover_letter=cover_letter,
+            cv_filename=filename,
+        )
 
         return application
 
