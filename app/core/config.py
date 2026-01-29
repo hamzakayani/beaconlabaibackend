@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     CONTACT_EMAIL: str = "riaz.irbaz@mayo.edu"
     CONTACT_ADDRESS: str = "Johnson Medical Research Building, 13400, E shea Blvd, Scottsdale, Arizona, 85259"
     ADMIN_NOTIFICATION_EMAIL: str = ""  # Optional: Set in .env to receive email notifications
-    
+    BASE_URL: str = "https://app.lisr.org/beaconlabai"  # Public base URL for links in emails (e.g. admin panel, CV downloads)
+
     IMAGES_UPLOAD_DIR: Path = Path("images")
     IMAGE_MAX_FILE_SIZE:int = 5 * 1024 * 1024  # 5 MB
     ALLOWED_IMAGE_EXTENSIONS:set = {".jpg", ".jpeg", ".png", ".gif", ".webp"}

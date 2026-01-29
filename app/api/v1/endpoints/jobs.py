@@ -314,6 +314,7 @@ async def apply_to_job(
         # Notify admins in background (same list as contact inquiry)
         background_tasks.add_task(
             send_job_application_notification,
+            job_id=job_id,
             job_title=job.title,
             full_name=full_name,
             email=email,

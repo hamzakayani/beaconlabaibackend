@@ -296,6 +296,7 @@ def send_contact_inquiry_notification(
 
 
 def send_job_application_notification(
+    job_id: int,
     job_title: str,
     full_name: str,
     email: str,
@@ -312,6 +313,9 @@ def send_job_application_notification(
             "ADMIN_NOTIFICATION_EMAIL not configured. Skipping job application email notification."
         )
         return False
+
+    base_url = (settings.BASE_URL or "").rstrip("/")
+    cv_download_url = f"{base_url}/cv_uploads/{job_id}/{cv_filename}" if base_url else ""
 
     phone_display = phone or "Not provided"
     cover_display = (cover_letter or "Not provided").strip()
@@ -405,7 +409,9 @@ def send_job_application_notification(
               </tr>
               <tr>
                 <td style="padding:10px 0; color:#6b7280;">CV file</td>
-                <td>{html.escape(cv_filename)}</td>
+                <td>
+                  {('<a href="' + html.escape(cv_download_url) + '" style="color:#2563eb; text-decoration:none;">Download CV</a>' if cv_download_url else html.escape(cv_filename))}
+                </td>
               </tr>
             </table>
           </td>
