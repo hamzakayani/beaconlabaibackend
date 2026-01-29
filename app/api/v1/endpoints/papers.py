@@ -191,19 +191,11 @@ async def update_paper(
                 detail="Paper not found"
                 )
         
-        # Check if order is being updated and needs reordering
-        order_changed = False
-        new_order = None
-        
         if paper_data.order is not None and paper_data.order < 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Order must be greater than 0"
             )
-        
-        if paper_data.order is not None and paper_data.order != paper.order:
-            order_changed = True
-            new_order = paper_data.order
         
         if paper_data.title is not None:
             paper.title = paper_data.title
@@ -227,20 +219,8 @@ async def update_paper(
             paper.is_presentation = paper_data.is_presentation
         if paper_data.is_open is not None:
             paper.is_open = paper_data.is_open
-        # Note: order is handled by reorder_item service below
-
-        # If order changed, perform reordering
-        if order_changed:
-            try:
-                reorder_item(db, Paper, paper_id, new_order)
-            except HTTPException:
-                raise
-            except Exception as e:
-                db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Failed to reorder: {str(e)}"
-                )
+        if paper_data.order is not None:
+            paper.order = paper_data.order
         
         db.commit()
         return {"message": "The paper has been successfully updated."}
@@ -282,7 +262,7 @@ async def list_all_papers(
         
 
         # Order by order field
-        query = query.order_by(Paper.order)
+        query = query.order_by(Paper.order.asc(), Paper.created_at.desc())
         
         # Get total count
         total_items = query.count()

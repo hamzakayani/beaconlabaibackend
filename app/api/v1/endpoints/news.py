@@ -156,9 +156,9 @@ async def get_all_news(
     total_items = query.count()
     total_pages = ceil(total_items / size)
     
-    # Apply pagination
-    items = query.order_by(News.order).offset((page - 1) * size).limit(size).all()
-    
+    # # Apply pagination
+    # items = query.order_by(News.order.desc()).offset((page - 1) * size).limit(size).all()
+    items = query.order_by(News.order.asc(), News.created_at.desc()).offset((page - 1) * size).limit(size).all()
     page_info = PageInfo(
         total=total_items,
         page=page,

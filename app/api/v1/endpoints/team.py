@@ -101,20 +101,12 @@ async def update_team_member(
             detail="Team member not found"
         )
 
-    # Check if order is being updated and needs reordering
-    order_changed = False
-    new_order = None
-    
     if order is not None and order < 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must be greater than 0"
         )
         
-    if order is not None and order != team_member.order:
-        order_changed = True
-        new_order = order
-
     team_category = None
     if category is not None:
         try:
@@ -161,18 +153,8 @@ async def update_team_member(
     elif not image_url:
         team_member.image_url = ""
 
-    # If order changed, perform reordering
-    if order_changed:
-        try:
-            reorder_item(db, TeamMember, team_member_id, new_order)
-        except HTTPException:
-            raise
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to reorder: {str(e)}"
-            )
+    if order is not None:
+        team_member.order = order
     
     team_member.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -220,7 +202,7 @@ async def list_team_members(
         )
     
     # Order by order field
-    query = query.order_by(TeamMember.order)
+    query = query.order_by(TeamMember.order.asc(), TeamMember.created_at.desc())
     
     # Get total count before pagination
     total_items = query.count()

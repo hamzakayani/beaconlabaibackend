@@ -90,7 +90,7 @@ async def list_jobs(
     total_items = query.count()
     total_pages = ceil(total_items / size) if total_items > 0 else 0
 
-    items = query.order_by(Job.order).offset((page - 1) * size).limit(size).all()
+    items = query.order_by(Job.order.asc(), Job.created_at.desc()).offset((page - 1) * size).limit(size).all()
     
     page_info = PageInfo(
         total=total_items,
@@ -150,19 +150,12 @@ async def update_job(
             detail="Job not found"
         )
     
-    # Check if order is being updated and needs reordering
-    order_changed = False
-    new_order = None
     
     if job_data.order is not None and job_data.order < 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must be greater than 0"
         )
-    
-    if job_data.order is not None and job_data.order != job.order:
-        order_changed = True
-        new_order = job_data.order
     
     if job_data.title is not None:
         job.title = job_data.title
@@ -184,20 +177,8 @@ async def update_job(
         job.required_qualifications = job_data.required_qualifications
     if job_data.preferred_qualifications is not None:
         job.preferred_qualifications = job_data.preferred_qualifications
-    # Note: order is handled by reorder_item service below
-
-    # If order changed, perform reordering
-    if order_changed:
-        try:
-            reorder_item(db, Job, job_id, new_order)
-        except HTTPException:
-            raise
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to reorder: {str(e)}"
-            )
+    if job_data.order is not None:
+        job.order = job_data.order
     
     job.updated_at = datetime.now(timezone.utc)
     db.commit()

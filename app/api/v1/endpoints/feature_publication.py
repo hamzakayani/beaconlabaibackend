@@ -228,7 +228,7 @@ async def list_feature_publications(
             )
         
         # Order by order field
-        query = query.order_by(FeaturePublication.order)
+        query = query.order_by(FeaturePublication.order.asc(), FeaturePublication.created_at.desc())
         
         # Get total count
         total_items = query.count()
@@ -304,19 +304,12 @@ async def update_feature_publication(
             detail="Feature publication not found"
         )
 
-    # Check if order is being updated and needs reordering
-    order_changed = False
-    new_order = None
     if publication_data.order is not None and publication_data.order < 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must be greater than 0"
         )
         
-    if publication_data.order is not None and publication_data.order != publication.order:
-        order_changed = True
-        new_order = publication_data.order
-
     # Update fields if provided
     if publication_data.title is not None:
         publication.title = publication_data.title
@@ -340,20 +333,8 @@ async def update_feature_publication(
         publication.is_open = publication_data.is_open
     if publication_data.image_url is not None:
         publication.image_url = publication_data.image_url
-    # Note: order is handled by reorder_item service below
-
-    # If order changed, perform reordering
-    if order_changed:
-        try:
-            reorder_item(db, FeaturePublication, publication_id, new_order)
-        except HTTPException:
-            raise
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to reorder: {str(e)}"
-            )
+    if publication_data.order is not None:
+        publication.order = publication_data.order
     
     publication.updated_at = datetime.now(timezone.utc)
     db.commit()
