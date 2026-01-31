@@ -10,6 +10,7 @@ class Category(str, Enum):
     artificial_intelligence = "artificial intelligence"
     evidence_synthesis = "evidence synthesis"
     oncology = "oncology"
+    genomics = "genomics"
 
 class DOIPaperCreate(BaseModel):
     doi: str

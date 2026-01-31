@@ -104,6 +104,53 @@ async def list_jobs(
     return PaginatedResponse(items=items, page_info=page_info)
 
 
+@router.get("/applications", response_model=PaginatedResponse[JobApplicationResponse])
+async def list_job_applications(
+    job_id: Optional[int] = Query(None, description="Filter by job ID. If not provided, returns all applicants."),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """
+    List job applications (admin only).
+    If job_id is provided, returns applicants for that job. Otherwise returns all applicants.
+    """
+    query = db.query(JobApplicant)
+
+    if job_id is not None:
+        # Verify job exists when job_id is provided
+        job = db.query(Job).filter(
+            Job.id == job_id,
+            Job.is_deleted == False
+        ).first()
+
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found"
+            )
+        query = query.filter(JobApplicant.job_id == job_id)
+
+    # Get total count
+    total_items = query.count()
+    total_pages = ceil(total_items / size) if total_items > 0 else 0
+
+    # Apply pagination
+    items = query.order_by(JobApplicant.created_at.desc()).offset((page - 1) * size).limit(size).all()
+
+    page_info = PageInfo(
+        total=total_items,
+        page=page,
+        size=size,
+        total_pages=total_pages,
+        has_next=page < total_pages,
+        has_previous=page > 1
+    )
+
+    return PaginatedResponse(items=items, page_info=page_info)
+
+
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: int,
@@ -323,53 +370,6 @@ async def apply_to_job(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create application: {str(e)}"
         )
-
-
-
-@router.get("/{job_id}/applications", response_model=PaginatedResponse[JobApplicationResponse])
-async def list_job_applications(
-    job_id: int,
-    page: int = Query(1, ge=1, description="Page number"),
-    size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin)
-):
-    """
-    List all applications for a specific job (admin only).
-    """
-    # Verify job exists
-    job = db.query(Job).filter(
-        and_(
-            Job.id == job_id,
-            Job.is_deleted == False
-        )
-    ).first()
-    
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
-    
-    query = db.query(JobApplicant).filter(JobApplicant.job_id == job_id)
-    
-    # Get total count
-    total_items = query.count()
-    total_pages = ceil(total_items / size) if total_items > 0 else 0
-    
-    # Apply pagination
-    items = query.order_by(JobApplicant.created_at.desc()).offset((page - 1) * size).limit(size).all()
-    
-    page_info = PageInfo(
-        total=total_items,
-        page=page,
-        size=size,
-        total_pages=total_pages,
-        has_next=page < total_pages,
-        has_previous=page > 1
-    )
-    
-    return PaginatedResponse(items=items, page_info=page_info)
 
 
 # @router.put("/reorder/{job_id}")
