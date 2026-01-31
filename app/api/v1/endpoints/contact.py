@@ -54,7 +54,7 @@ async def submit_contact_form(
             last_name=contact_data.last_name,
             email=contact_data.email or "Not provided",
             phone_number=contact_data.phone_number or "Not provided",
-            subject=contact_data.subject,
+            subject=contact_data.subject.value,
             message=contact_data.message or "No message provided"
         )
 
