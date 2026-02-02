@@ -168,9 +168,7 @@ def send_contact_inquiry_notification(
                   <span style="font-size:22px; font-weight:700; color:#ffffff;">BEACON</span>
                   <span style="color:#ffffff80; margin:0 6px;">|</span>
                   <span style="font-size:22px; font-weight:700; color:#ffffff;">RIAZ LAB</span>
-                  <div style="margin-top:6px; font-size:11px; letter-spacing:2px; color:#ffffff99;">
-                    EVIDENCE SYNTHESIS
-                  </div>
+
                 </td>
                 <td align="right">
                   <div style="width:44px; height:44px; background:#2563eb; border-radius:50%;
@@ -350,9 +348,7 @@ def send_job_application_notification(
                   <span style="font-size:22px; font-weight:700; color:#ffffff;">BEACON</span>
                   <span style="color:#ffffff80; margin:0 6px;">|</span>
                   <span style="font-size:22px; font-weight:700; color:#ffffff;">RIAZ LAB</span>
-                  <div style="margin-top:6px; font-size:11px; letter-spacing:2px; color:#ffffff99;">
-                    EVIDENCE SYNTHESIS
-                  </div>
+
                 </td>
                 <td align="right">
                   <div style="width:44px; height:44px; background:#2563eb; border-radius:50%;
