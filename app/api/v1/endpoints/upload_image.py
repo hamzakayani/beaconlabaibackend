@@ -21,7 +21,7 @@ async def upload_images(
     """
     Upload an image for a feature publication (Authenticated users only)
     """
-    valid_stages = ["feature_publication", "teams", "news"]
+    valid_stages = ["feature_publication", "teams", "news", "lab_gallery"]
     if stage not in valid_stages:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

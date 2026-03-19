@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.logging_config import setup_logging
 logger = setup_logging()
 
-from app.api.v1.endpoints import auth, contact, team, jobs, papers, feature_publication, news, upload_image
+from app.api.v1.endpoints import auth, contact, team, jobs, papers, feature_publication, news, upload_image, lab_gallery
 
 app = FastAPI(
     title="Beacon Lab AI Backend",
@@ -71,6 +71,7 @@ app.include_router(papers.router, prefix="/api/v1/papers", tags=["Papers"])
 app.include_router(feature_publication.router, prefix="/api/v1/feature_publication", tags=["Feature Publication"])
 app.include_router(news.router, prefix="/api/v1/news", tags=["News"])
 app.include_router(upload_image.router, prefix="/api/v1/upload_image", tags=["Upload Image"])
+app.include_router(lab_gallery.router, prefix="/api/v1/lab_gallery", tags=["Lab Gallery"])
 
 
 

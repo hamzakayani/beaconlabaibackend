@@ -15,6 +15,7 @@ from app.models.job_applicants import JobApplicant
 from app.models.papers import Paper
 from app.models.feature_publication import FeaturePublication
 from app.models.news import News
+from app.models.lab_gallery import LabGallery
 
 
 
