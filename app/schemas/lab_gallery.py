@@ -1,6 +1,22 @@
+from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
+
+
+class LabGalleryCategory(str, Enum):
+    CONFERENCES = "conferences"
+    DINNERS_AND_CELEBRATIONS = "dinners_and_celebrations"
+    CULTURAL_EVENTS = "cultural_events"
+    FAREWELLS = "farewells"
+
+
+class LabGalleryStatus(str, Enum):
+    ONGOING = "ongoing"
+    UPCOMING = "upcoming"
+    PAST = "past"
+    COMPLETED = "completed"
+    DONE = "done"
 
 
 class LabGalleryCreate(BaseModel):
@@ -8,6 +24,11 @@ class LabGalleryCreate(BaseModel):
     content: str = Field(..., min_length=1)
     image_url: Optional[str] = None
     order: int = 1
+    category: LabGalleryCategory
+    date: str = Field(..., min_length=1, max_length=100)
+    location: str = Field(..., min_length=1, max_length=255)
+    participant: str = Field(..., min_length=1, max_length=100)
+    status: LabGalleryStatus
 
 
 class LabGalleryUpdate(BaseModel):
@@ -15,6 +36,11 @@ class LabGalleryUpdate(BaseModel):
     content: Optional[str] = Field(None, min_length=1)
     image_url: Optional[str] = None
     order: Optional[int] = None
+    category: Optional[LabGalleryCategory] = None
+    date: Optional[str] = Field(None, min_length=1, max_length=100)
+    location: Optional[str] = Field(None, min_length=1, max_length=255)
+    participant: Optional[str] = Field(None, min_length=1, max_length=100)
+    status: Optional[LabGalleryStatus] = None
 
 
 class LabGalleryResponse(BaseModel):
@@ -23,6 +49,11 @@ class LabGalleryResponse(BaseModel):
     content: str
     image_url: Optional[str] = None
     order: int
+    category: LabGalleryCategory
+    date: str
+    location: str
+    participant: str
+    status: LabGalleryStatus
     created_at: datetime
     updated_at: datetime
 

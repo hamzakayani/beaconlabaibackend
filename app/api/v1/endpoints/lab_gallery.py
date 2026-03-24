@@ -35,6 +35,11 @@ async def add_lab_gallery(
         content=lab_gallery_data.content,
         image_url=lab_gallery_data.image_url if lab_gallery_data.image_url else None,
         order=lab_gallery_data.order,
+        category=lab_gallery_data.category.value,
+        date=lab_gallery_data.date,
+        location=lab_gallery_data.location,
+        participant=lab_gallery_data.participant,
+        status=lab_gallery_data.status.value,
     )
 
     db.add(lab_gallery)
@@ -79,6 +84,16 @@ async def update_lab_gallery(
         lab_gallery.image_url = lab_gallery_data.image_url
     if lab_gallery_data.order is not None:
         lab_gallery.order = lab_gallery_data.order
+    if lab_gallery_data.category is not None:
+        lab_gallery.category = lab_gallery_data.category.value
+    if lab_gallery_data.date is not None:
+        lab_gallery.date = lab_gallery_data.date
+    if lab_gallery_data.location is not None:
+        lab_gallery.location = lab_gallery_data.location
+    if lab_gallery_data.participant is not None:
+        lab_gallery.participant = lab_gallery_data.participant
+    if lab_gallery_data.status is not None:
+        lab_gallery.status = lab_gallery_data.status.value
 
     lab_gallery.updated_at = datetime.now(timezone.utc)
     db.commit()
