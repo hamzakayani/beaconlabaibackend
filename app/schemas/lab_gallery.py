@@ -9,6 +9,8 @@ class LabGalleryCategory(str, Enum):
     DINNERS_AND_CELEBRATIONS = "dinners_and_celebrations"
     CULTURAL_EVENTS = "cultural_events"
     FAREWELLS = "farewells"
+    MATCH_CELEBRATIONS = "match_celebrations"
+    VISITING_FACULTY = "visiting_faculty"
 
 
 class LabGalleryStatus(str, Enum):
