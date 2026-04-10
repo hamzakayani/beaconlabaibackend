@@ -4,8 +4,57 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.core.config import settings
 from app.core.logging_config import setup_logging
+from app.services.email_client import SMTPClient
 
 logger = setup_logging()
+
+def send_bulk_emails(email_jobs: list[dict]) -> bool:
+    """
+    email_jobs = [
+        {
+            "recipients": [...],
+            "subject": "...",
+            "body": "...",
+            "is_html": True
+        }
+    ]
+    """
+    if not email_jobs:
+        return False
+
+    smtp_client = SMTPClient()
+
+    try:
+        smtp_client.connect()
+
+        for job in email_jobs:
+            for recipient in job["recipients"]:  # ✅ send individually (important)
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = job["subject"]
+                msg['From'] = settings.SMTP_USERNAME
+                msg['To'] = recipient
+
+                if job["is_html"]:
+                    msg.attach(MIMEText(job["body"], 'html'))
+                else:
+                    msg.attach(MIMEText(job["body"], 'plain'))
+
+                smtp_client.send(
+                    settings.SMTP_USERNAME,
+                    [recipient],
+                    msg.as_string()
+                )
+
+        logger.info("Bulk emails sent successfully")
+        return True
+
+    except Exception as e:
+        logger.error(f"Bulk email failed: {str(e)}")
+        return False
+
+    finally:
+        smtp_client.close()
+        
 def get_admin_notification_emails() -> list[str]:
     """
     Parse ADMIN_NOTIFICATION_EMAIL from .env and return a clean list of emails
@@ -19,109 +68,54 @@ def get_admin_notification_emails() -> list[str]:
         if email.strip()
     ]
 
-def send_email_notification(
-    to_email: str | list[str],
-    subject: str,
-    body: str,
-    is_html: bool = False
-) -> bool:
-    """
-    Send email notification using SMTP
-
-    Args:
-        to_email: Recipient email address or list of addresses
-        subject: Email subject
-        body: Email body content
-        is_html: Whether body is HTML format
-
-    Returns:
-        bool: True if email sent successfully, False otherwise
-    """
-    recipients = [to_email] if isinstance(to_email, str) else to_email
-    if not recipients:
-        return False
-
-    try:
-        # Create message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = settings.SMTP_USERNAME
-        msg['To'] = ", ".join(recipients)
-
-        # Add body to email
-        if is_html:
-            msg.attach(MIMEText(body, 'html'))
-        else:
-            msg.attach(MIMEText(body, 'plain'))
-
-        # Create SMTP session
-        with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
-            server.starttls()  # Enable security
-            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_USERNAME, recipients, msg.as_string())
-
-        logger.info(f"Email sent successfully to {recipients}")
-        return True
-
-    except Exception as e:
-        logger.error(f"Failed to send email to {recipients}: {str(e)}")
-        return False
-
-# def send_contact_inquiry_notification(
-#     first_name: str,
-#     last_name: str,
-#     email: str,
-#     phone_number: str,
+# def send_email_notification(
+#     to_email: str | list[str],
 #     subject: str,
-#     message: str
+#     body: str,
+#     is_html: bool = False
 # ) -> bool:
 #     """
-#     Send notification email to admin when a new contact inquiry is submitted
-    
+#     Send email notification using SMTP
+
 #     Args:
-#         first_name: Contact's first name
-#         last_name: Contact's last name
-#         email: Contact's email
-#         phone_number: Contact's phone number
-#         subject: Inquiry subject
-#         message: Inquiry message
-    
+#         to_email: Recipient email address or list of addresses
+#         subject: Email subject
+#         body: Email body content
+#         is_html: Whether body is HTML format
+
 #     Returns:
 #         bool: True if email sent successfully, False otherwise
 #     """
-#     admin_emails = get_admin_notification_emails()
-#     # Check if admin notification email is configured
-#     if not admin_emails:
-#         logger.warning(
-#             "ADMIN_NOTIFICATION_EMAIL not configured. Skipping email notification."
-#         )
+#     recipients = [to_email] if isinstance(to_email, str) else to_email
+#     if not recipients:
 #         return False
-    
-#     email_subject = f"Beacon Lab AI Inquiry: {subject}"
-    
-#     email_body = f""" 
-# CONTACT DETAILS:
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Name: {first_name} {last_name}
-# Email: {email}
-# Phone: {phone_number}
-# Subject: {subject}
 
-# MESSAGE:
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# {message}
+#     try:
+#         # Create message
+#         msg = MIMEMultipart('alternative')
+#         msg['Subject'] = subject
+#         msg['From'] = settings.SMTP_USERNAME
+#         msg['To'] = ", ".join(recipients)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# This is an automated notification from Beacon Lab AI Backend.
-# Please log in to the admin panel to view and manage this inquiry.
-# """
-    
-#     return send_email_notification(
-#         to_email=admin_emails,
-#         subject=email_subject,
-#         body=email_body,
-#         is_html=False
-#     )
+#         # Add body to email
+#         if is_html:
+#             msg.attach(MIMEText(body, 'html'))
+#         else:
+#             msg.attach(MIMEText(body, 'plain'))
+
+#         # Create SMTP session
+#         with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+#             server.starttls()  # Enable security
+#             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+#             server.sendmail(settings.SMTP_USERNAME, recipients, msg.as_string())
+
+#         logger.info(f"Email sent successfully to {recipients}")
+#         return True
+
+#     except Exception as e:
+#         logger.error(f"Failed to send email to {recipients}: {str(e)}")
+#         return False
+
 
 def send_contact_inquiry_notification(
     first_name: str,
@@ -285,11 +279,15 @@ def send_contact_inquiry_notification(
 </html>
 """
  
-    return send_email_notification(
-        to_email=admin_emails,
-        subject=email_subject,
-        body=email_body,
-        is_html=True
+    return send_bulk_emails(
+        [
+            {
+                "recipients": admin_emails,
+                "subject": email_subject,
+                "body": email_body,
+                "is_html": True
+            }
+        ]
     )
 
 
@@ -467,10 +465,14 @@ def send_job_application_notification(
 </html>
 """
 
-    return send_email_notification(
-        to_email=admin_emails,
-        subject=email_subject,
-        body=email_body,
-        is_html=True
+    return send_bulk_emails(
+        [
+            {
+                "recipients": admin_emails,
+                "subject": email_subject,
+                "body": email_body,
+                "is_html": True
+            }
+        ]
     )
 
