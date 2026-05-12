@@ -11,7 +11,7 @@ class LabGalleryCategory(str, Enum):
     FAREWELLS = "farewells"
     MATCH_CELEBRATIONS = "match_celebrations"
     VISITING_FACULTY = "visiting_faculty"
-
+    OTHER = "other"
 
 class LabGalleryStatus(str, Enum):
     ONGOING = "ongoing"
